@@ -1,0 +1,114 @@
+body {
+    font-family: "Gulzar", serif;
+    font-weight: 400;
+    font-style: normal;
+  }
+  
+@font-face {
+  font-family: 'Amiri';
+  src: url('/fonts/Amiri-Regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Rubik-Bold';
+  src: url('/fonts/Rubik-Bold.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Rubik-Light';
+  src: url('/fonts/Rubik-Light.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Scheherazade-Regular';
+  src: url('/fonts/ScheherazadeNew-Regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Scheherazade-Bold';
+  src: url('/fonts/ScheherazadeNew-Bold.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Aslam';
+  src: url('/fonts/Aslam.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Mehr-Nastaliq';
+  src: url('/fonts/Mehr_Nastaliq_Web v. 2.0.ttf') format('truetype');
+}
+
+
+/* Tell Quill how to render each font option in the dropdown */
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="serif"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="serif"]::before {
+  content: 'Serif';
+  font-family: serif;
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="sans-serif"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="sans-serif"]::before {
+  content: 'Sans Serif';
+  font-family: sans-serif;
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="monospace"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="monospace"]::before {
+  content: 'Monospace';
+  font-family: monospace;
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Amiri"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Amiri"]::before {
+  content: 'Amiri';
+  font-family: 'Amiri';
+}
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Rubik-Bold"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Rubik-Bold"]::before {
+  content: 'Rubik Bold';
+  font-family: 'Rubik-Bold';
+}
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Rubik-Light"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Rubik-Light"]::before {
+  content: 'Rubik Light';
+  font-family: 'Rubik-Light';
+}
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Scheherazade-Regular"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Scheherazade-Regular"]::before {
+  content: 'Scheherazade';
+  font-family: 'Scheherazade-Regular';
+}
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Scheherazade-Bold"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Scheherazade-Bold"]::before {
+  content: 'Scheherazade Bold';
+  font-family: 'Scheherazade-Bold';
+}
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Aslam"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Aslam"]::before {
+  content: 'Aslam';
+  font-family: 'Aslam';
+}
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Mehr-Nastaliq"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Mehr-Nastaliq"]::before {
+  content: 'Mehr Nastaliq';
+  font-family: 'Mehr-Nastaliq';
+}
+
+
+.ql-font-Amiri {
+  font-family: 'Amiri', serif;
+}
+.ql-font-Rubik-Bold {
+  font-family: 'Rubik-Bold', sans-serif;
+}
+.ql-font-Rubik-Light {
+  font-family: 'Rubik-Light', sans-serif;
+}
+.ql-font-Scheherazade-Regular {
+  font-family: 'Scheherazade-Regular', serif;
+}
+.ql-font-Scheherazade-Bold {
+  font-family: 'Scheherazade-Bold', serif;
+}
+.ql-font-Aslam {
+  font-family: 'Aslam', serif;
+}
+.ql-font-Mehr-Nastaliq {
+  font-family: 'Mehr-Nastaliq', serif;
+}
