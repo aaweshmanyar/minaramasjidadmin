@@ -43,6 +43,12 @@ import CreateAboutContent from './pages/homepage/elements/CreateAboutContent';
 import AboutContentUpdateForm from './pages/homepage/EditForms/AboutContentUpdateForm';
 import NewArticleList from './pages/homepage/elements/NewArticleList';
 import ProfileDetail from './component/ProfileDetail'
+import GalleryList from './pages/homepage/elements/GalleryList';
+import CreateGallery from './pages/homepage/elements/CreateGallery';
+import CreateTopicsTags from './pages/homepage/elements/CreateTopicsTags';
+import TopicsTagsList from './pages/homepage/elements/TopicsTagsList';
+
+
 
 const App = () => {
   return (
@@ -67,10 +73,15 @@ const App = () => {
           <Route path="/updateabout/:id" element={<AboutContentUpdateForm />} />
 
           <Route path="/contact" element={<ContactList />} />
+          <Route path="/gallery" element={<GalleryList />} />
+          <Route path="/creategallery" element={<CreateGallery />} />
           <Route path="/writers" element={<WriterManagement />} />
           <Route path="/writers/:id" element={<WriterDetail />} />
           <Route path="/writers-update/:id" element={<WriterUpdateForm />} />
           <Route path="/createwriter" element={<CreateWriterForm />} />
+
+ <Route path="/topictagslist" element={<TopicsTagsList />} />
+  <Route path="/createtopictags" element={<CreateTopicsTags />} />
 
           <Route path="/booklist" element={<BookList />} />
           <Route path="/bookdownload" element={<BookList />} />

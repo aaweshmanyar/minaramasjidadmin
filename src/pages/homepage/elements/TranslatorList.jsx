@@ -2,28 +2,45 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Layout from "../../../component/Layout";
 import Swal from "sweetalert2";
-import { UserPlus, Pencil, Eye, Trash2, Search, Users, Filter, FileText, Image as ImageIcon } from "lucide-react";
+import {
+  UserPlus,
+  Pencil,
+  Eye,
+  Trash2,
+  Search,
+  Users,
+  Filter,
+  FileText,
+  Image as ImageIcon,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import API_BASE_URL from "../../../../config";
 
 export default function TranslatorList() {
   const [translators, setTranslators] = useState([]);
   const [filteredTranslators, setFilteredTranslators] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
   const [formData, setFormData] = useState({
     id: null,
     name: "",
     designation: "",
     englishDescription: "",
     urduDescription: "",
+    languages: "",
+    status: "Active",
     image: null,
   });
+
   const [selectedTranslator, setSelectedTranslator] = useState(null);
   const [showViewCard, setShowViewCard] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Pagination state
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage] = useState(10);
 
@@ -32,22 +49,26 @@ export default function TranslatorList() {
   }, []);
 
   useEffect(() => {
-    const q = searchTerm.toLowerCase();
+    const q = (searchTerm || "").toLowerCase();
     const filtered = translators.filter(
       (t) =>
-        t.name?.toLowerCase().includes(q) ||
-        t.designation?.toLowerCase().includes(q)
+        (t.name || "").toLowerCase().includes(q) ||
+        (t.designation || "").toLowerCase().includes(q)
+      // Include languages in search by uncommenting next line:
+      // || (t.languages || "").toLowerCase().includes(q)
     );
     setFilteredTranslators(filtered);
     setCurrentPage(1);
   }, [searchTerm, translators]);
 
   const fetchTranslators = () => {
+    setLoading(true);
     axios
       .get(`${API_BASE_URL}/api/translators`)
       .then((res) => {
-        setTranslators(res.data);
-        setFilteredTranslators(res.data);
+        const data = res.data || [];
+        setTranslators(data);
+        setFilteredTranslators(data);
         setLoading(false);
       })
       .catch((err) => {
@@ -61,11 +82,17 @@ export default function TranslatorList() {
   // Paging math
   const indexOfLastEntry = currentPage * entriesPerPage;
   const indexOfFirstEntry = indexOfLastEntry - entriesPerPage;
-  const currentEntries = filteredTranslators.slice(indexOfFirstEntry, indexOfLastEntry);
+  const currentEntries = filteredTranslators.slice(
+    indexOfFirstEntry,
+    indexOfLastEntry
+  );
   const totalPages = Math.ceil(filteredTranslators.length / entriesPerPage);
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const prevPage = () => currentPage > 1 && setCurrentPage(currentPage - 1);
-  const nextPage = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
+  const prevPage = () =>
+    currentPage > 1 && setCurrentPage((p) => Math.max(1, p - 1));
+  const nextPage = () =>
+    currentPage < totalPages &&
+    setCurrentPage((p) => Math.min(totalPages, p + 1));
 
   const toggleAddModal = () => {
     setIsAddModalOpen(!isAddModalOpen);
@@ -76,6 +103,8 @@ export default function TranslatorList() {
         designation: "",
         englishDescription: "",
         urduDescription: "",
+        languages: "",
+        status: "Active",
         image: null,
       });
     }
@@ -85,11 +114,13 @@ export default function TranslatorList() {
     setIsEditModalOpen(!isEditModalOpen);
     if (translator) {
       setFormData({
-        id: translator.id,
-        name: translator.name,
-        designation: translator.designation,
-        englishDescription: translator.englishDescription,
-        urduDescription: translator.urduDescription,
+        id: translator.id ?? null,
+        name: translator.name || "",
+        designation: translator.designation || "",
+        englishDescription: translator.englishDescription || "",
+        urduDescription: translator.urduDescription || "",
+        languages: translator.languages || "",
+        status: translator.status || "Active",
         image: null,
       });
     }
@@ -97,29 +128,41 @@ export default function TranslatorList() {
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    setFormData({ ...formData, [id]: value });
+    setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) setFormData({ ...formData, image: file });
+    const file = e.target.files?.[0] || null;
+    setFormData((prev) => ({ ...prev, image: file }));
   };
 
   const handleAddTranslator = async (e) => {
     e.preventDefault();
+    if (!formData.languages.trim()) {
+      Swal.fire("Languages required", "Please add at least one language.", "warning");
+      return;
+    }
     const form = new FormData();
     form.append("name", formData.name);
     form.append("designation", formData.designation);
     form.append("englishDescription", formData.englishDescription);
     form.append("urduDescription", formData.urduDescription);
+    form.append("languages", formData.languages);
+    form.append("status", formData.status);
     if (formData.image) form.append("image", formData.image);
     form.append("createdAt", new Date().toISOString());
 
     try {
-      Swal.fire({ title: "Adding Translator...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-      await axios.post(`${API_BASE_URL}/api/translators`, form, { headers: { "Content-Type": "multipart/form-data" } });
+      Swal.fire({
+        title: "Adding Translator...",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+      });
+      await axios.post(`${API_BASE_URL}/api/translators`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       toggleAddModal();
-      await fetchTranslators();
+      fetchTranslators();
       Swal.fire("Success", "Translator added successfully!", "success");
     } catch (err) {
       console.error("Error adding translator:", err);
@@ -129,18 +172,30 @@ export default function TranslatorList() {
 
   const handleUpdateTranslator = async (e) => {
     e.preventDefault();
+    if (!formData.languages.trim()) {
+      Swal.fire("Languages required", "Please add at least one language.", "warning");
+      return;
+    }
     const form = new FormData();
     form.append("name", formData.name);
     form.append("designation", formData.designation);
     form.append("englishDescription", formData.englishDescription);
     form.append("urduDescription", formData.urduDescription);
+    form.append("languages", formData.languages);
+    form.append("status", formData.status);
     if (formData.image) form.append("image", formData.image);
 
     try {
-      Swal.fire({ title: "Updating Translator...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-      await axios.put(`${API_BASE_URL}/api/translators/${formData.id}`, form, { headers: { "Content-Type": "multipart/form-data" } });
+      Swal.fire({
+        title: "Updating Translator...",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
+      });
+      await axios.put(`${API_BASE_URL}/api/translators/${formData.id}`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       setIsEditModalOpen(false);
-      await fetchTranslators();
+      fetchTranslators();
       Swal.fire("Success", "Translator updated successfully!", "success");
     } catch (err) {
       console.error("Error updating translator:", err);
@@ -160,7 +215,7 @@ export default function TranslatorList() {
       try {
         Swal.showLoading();
         await axios.delete(`${API_BASE_URL}/api/translators/${id}`);
-        await fetchTranslators();
+        fetchTranslators();
         Swal.fire("Deleted!", "Translator has been deleted.", "success");
       } catch (err) {
         console.error("Error deleting translator:", err);
@@ -174,12 +229,35 @@ export default function TranslatorList() {
     setShowViewCard(true);
   };
 
-  // helpers for UI text clamp + safe text
+  // helpers
   const clampStyle = {
     display: "-webkit-box",
     WebkitLineClamp: 3,
     WebkitBoxOrient: "vertical",
     overflow: "hidden",
+  };
+
+  const splitLanguages = (val) =>
+    (val || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+  const StatusBadge = ({ status }) => {
+    const s = (status || "Active").toLowerCase();
+    const isActive = s === "active";
+    return (
+      <span
+        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+          isActive
+            ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+            : "bg-gray-100 text-gray-700 ring-1 ring-gray-200"
+        }`}
+      >
+        {isActive ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+        {isActive ? "Active" : "Inactive"}
+      </span>
+    );
   };
 
   return (
@@ -188,8 +266,12 @@ export default function TranslatorList() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Manage Translators</h1>
-            <p className="text-sm text-gray-500 mt-1">Add, search, and manage translator profiles.</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">
+              Manage Translators
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Add, search, and manage translator profiles.
+            </p>
           </div>
           <button
             onClick={toggleAddModal}
@@ -206,21 +288,27 @@ export default function TranslatorList() {
             <Users className="w-9 h-9 p-2 rounded-lg bg-gray-100" />
             <div>
               <div className="text-xs text-gray-500">Total</div>
-              <div className="text-xl font-bold text-gray-800">{translators.length}</div>
+              <div className="text-xl font-bold text-gray-800">
+                {translators.length}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <Filter className="w-9 h-9 p-2 rounded-lg bg-gray-100" />
             <div>
               <div className="text-xs text-gray-500">After Filter</div>
-              <div className="text-xl font-bold text-gray-800">{filteredTranslators.length}</div>
+              <div className="text-xl font-bold text-gray-800">
+                {filteredTranslators.length}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <FileText className="w-9 h-9 p-2 rounded-lg bg-gray-100" />
             <div>
               <div className="text-xs text-gray-500">Page Size</div>
-              <div className="text-xl font-bold text-gray-800">{entriesPerPage}</div>
+              <div className="text-xl font-bold text-gray-800">
+                {entriesPerPage}
+              </div>
             </div>
           </div>
         </div>
@@ -253,13 +341,17 @@ export default function TranslatorList() {
           <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center text-gray-600">
             {searchTerm ? (
               <>
-                <div className="text-lg font-semibold">No matching translators found</div>
+                <div className="text-lg font-semibold">
+                  No matching translators found
+                </div>
                 <div className="text-sm mt-1">Try adjusting your search.</div>
               </>
             ) : (
               <>
                 <div className="text-lg font-semibold">No translators yet</div>
-                <div className="text-sm mt-1">Add your first translator to get started.</div>
+                <div className="text-sm mt-1">
+                  Add your first translator to get started.
+                </div>
               </>
             )}
           </div>
@@ -273,6 +365,8 @@ export default function TranslatorList() {
                     <th className="px-4 py-3 border-b">Profile</th>
                     <th className="px-4 py-3 border-b">Name</th>
                     <th className="px-4 py-3 border-b">Designation</th>
+                    <th className="px-4 py-3 border-b">Languages</th>
+                    <th className="px-4 py-3 border-b">Status</th>
                     <th className="px-4 py-3 border-b">English Description</th>
                     <th className="px-4 py-3 border-b">Urdu Description</th>
                     <th className="px-4 py-3 border-b">Actions</th>
@@ -282,10 +376,13 @@ export default function TranslatorList() {
                   {currentEntries.map((translator, index) => {
                     const eng = translator.englishDescription || "";
                     const urd = translator.urduDescription || "";
+                    const langs = splitLanguages(translator.languages);
                     return (
                       <tr
                         key={translator.id ?? index}
-                        className={`${(index % 2 === 0) ? "bg-white" : "bg-gray-50"} text-sm text-gray-700 hover:bg-[#f4f6ec] transition-colors`}
+                        className={`${
+                          index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                        } text-sm text-gray-700 hover:bg-[#f4f6ec] transition-colors`}
                       >
                         <td className="px-4 py-3 border-b align-top">
                           {indexOfFirstEntry + index + 1}
@@ -300,22 +397,66 @@ export default function TranslatorList() {
                         </td>
 
                         <td className="px-4 py-3 border-b align-top">
-                          <div className="font-semibold text-gray-900">{translator.name}</div>
-                          <div className="text-[11px] text-gray-500">ID: {translator.id}</div>
+                          <div className="font-semibold text-gray-900">
+                            {translator.name}
+                          </div>
+                          <div className="text-[11px] text-gray-500">
+                            ID: {translator.id}
+                          </div>
                         </td>
 
                         <td className="px-4 py-3 border-b align-top">
-                          <div className="max-w-[220px] truncate" title={translator.designation}>
+                          <div
+                            className="max-w-[220px] truncate"
+                            title={translator.designation}
+                          >
                             {translator.designation}
                           </div>
                         </td>
 
-                        <td className="px-4 py-3 border-b align-top" title={eng}>
-                          <div className="max-w-[360px] text-gray-700" style={clampStyle}>{eng}</div>
+                        {/* Languages chips */}
+                        <td className="px-4 py-3 border-b align-top">
+                          <div className="flex flex-wrap gap-1 max-w-[280px]">
+                            {langs.length ? (
+                              langs.map((l, i) => (
+                                <span
+                                  key={i}
+                                  className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700 ring-1 ring-gray-200"
+                                >
+                                  {l}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
+                          </div>
                         </td>
 
-                        <td className="px-4 py-3 border-b align-top text-right" title={urd} dir="rtl">
-                          <div className="max-w-[360px] text-gray-700" style={clampStyle}>{urd}</div>
+                        {/* Status badge */}
+                        <td className="px-4 py-3 border-b align-top">
+                          <StatusBadge status={translator.status} />
+                        </td>
+
+                        <td className="px-4 py-3 border-b align-top" title={eng}>
+                          <div
+                            className="max-w-[320px] text-gray-700"
+                            style={clampStyle}
+                          >
+                            {eng}
+                          </div>
+                        </td>
+
+                        <td
+                          className="px-4 py-3 border-b align-top text-right"
+                          title={urd}
+                          dir="rtl"
+                        >
+                          <div
+                            className="max-w-[320px] text-gray-700"
+                            style={clampStyle}
+                          >
+                            {urd}
+                          </div>
                         </td>
 
                         <td className="px-4 py-3 border-b align-top">
@@ -335,7 +476,9 @@ export default function TranslatorList() {
                               <Pencil size={18} />
                             </button>
                             <button
-                              onClick={() => handleDeleteTranslator(translator.id)}
+                              onClick={() =>
+                                handleDeleteTranslator(translator.id)
+                              }
                               className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-red-500 hover:bg-red-600 text-white"
                               title="Delete"
                             >
@@ -353,8 +496,12 @@ export default function TranslatorList() {
             {/* Footer: results + pagination */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t bg-gray-50">
               <div className="text-sm text-gray-600">
-                Showing {indexOfFirstEntry + 1} to {Math.min(indexOfLastEntry, filteredTranslators.length)} of {filteredTranslators.length} entries
-                {searchTerm && <span> (filtered from {translators.length} total)</span>}
+                Showing {indexOfFirstEntry + 1} to{" "}
+                {Math.min(indexOfLastEntry, filteredTranslators.length)} of{" "}
+                {filteredTranslators.length} entries
+                {searchTerm && (
+                  <span> (filtered from {translators.length} total)</span>
+                )}
               </div>
 
               {filteredTranslators.length > entriesPerPage && (
@@ -372,19 +519,21 @@ export default function TranslatorList() {
                   </button>
 
                   <div className="flex gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <button
-                        key={page}
-                        onClick={() => paginate(page)}
-                        className={`px-3 py-2 rounded-lg text-sm border ${
-                          currentPage === page
-                            ? "bg-[#5a6c17] text-white border-[#5a6c17]"
-                            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                      (page) => (
+                        <button
+                          key={page}
+                          onClick={() => paginate(page)}
+                          className={`px-3 py-2 rounded-lg text-sm border ${
+                            currentPage === page
+                              ? "bg-[#5a6c17] text-white border-[#5a6c17]"
+                              : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      )
+                    )}
                   </div>
 
                   <button
@@ -412,7 +561,12 @@ export default function TranslatorList() {
               <form onSubmit={handleAddTranslator} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
+                    <label
+                      htmlFor="name"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Name*
+                    </label>
                     <input
                       id="name"
                       type="text"
@@ -423,7 +577,12 @@ export default function TranslatorList() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="designation" className="block text-sm font-medium text-gray-700">Designation</label>
+                    <label
+                      htmlFor="designation"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Designation*
+                    </label>
                     <input
                       id="designation"
                       type="text"
@@ -435,9 +594,66 @@ export default function TranslatorList() {
                   </div>
                 </div>
 
+                {/* Languages + Status */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="englishDescription" className="block text-sm font-medium text-gray-700">English Description</label>
+                    <label
+                      htmlFor="languages"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Languages (Comma Separated)*
+                    </label>
+                    <input
+                      id="languages"
+                      type="text"
+                      placeholder="e.g. Urdu, English, Hindi"
+                      value={formData.languages}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5a6c17]/30"
+                      required
+                    />
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {splitLanguages(formData.languages).map((l, i) => (
+                        <span
+                          key={i}
+                          className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700 ring-1 ring-gray-200"
+                        >
+                          {l}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="status"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Status*
+                    </label>
+                    <select
+                      id="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5a6c17]/30 bg-white"
+                      required
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                    <div className="mt-2">
+                      <StatusBadge status={formData.status} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="englishDescription"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      English Description*
+                    </label>
                     <textarea
                       id="englishDescription"
                       value={formData.englishDescription}
@@ -447,7 +663,12 @@ export default function TranslatorList() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="urduDescription" className="block text-sm font-medium text-gray-700">Urdu Description</label>
+                    <label
+                      htmlFor="urduDescription"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Urdu Description*
+                    </label>
                     <textarea
                       id="urduDescription"
                       value={formData.urduDescription}
@@ -459,7 +680,12 @@ export default function TranslatorList() {
                 </div>
 
                 <div>
-                  <label htmlFor="image" className="block text-sm font-medium text-gray-700">Profile Picture</label>
+                  <label
+                    htmlFor="image"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Profile Picture
+                  </label>
                   <input
                     id="image"
                     type="file"
@@ -497,7 +723,12 @@ export default function TranslatorList() {
               <form onSubmit={handleUpdateTranslator} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
+                    <label
+                      htmlFor="name"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Name*
+                    </label>
                     <input
                       id="name"
                       type="text"
@@ -508,7 +739,12 @@ export default function TranslatorList() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="designation" className="block text-sm font-medium text-gray-700">Designation</label>
+                    <label
+                      htmlFor="designation"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Designation*
+                    </label>
                     <input
                       id="designation"
                       type="text"
@@ -520,9 +756,66 @@ export default function TranslatorList() {
                   </div>
                 </div>
 
+                {/* Languages + Status in Edit */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="englishDescription" className="block text-sm font-medium text-gray-700">English Description</label>
+                    <label
+                      htmlFor="languages"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Languages (Comma Separated)*
+                    </label>
+                    <input
+                      id="languages"
+                      type="text"
+                      placeholder="e.g. Urdu, English, Hindi"
+                      value={formData.languages}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5a6c17]/30"
+                      required
+                    />
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {splitLanguages(formData.languages).map((l, i) => (
+                        <span
+                          key={i}
+                          className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700 ring-1 ring-gray-200"
+                        >
+                          {l}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="status"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Status*
+                    </label>
+                    <select
+                      id="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5a6c17]/30 bg-white"
+                      required
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                    <div className="mt-2">
+                      <StatusBadge status={formData.status} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="englishDescription"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      English Description*
+                    </label>
                     <textarea
                       id="englishDescription"
                       value={formData.englishDescription}
@@ -532,7 +825,12 @@ export default function TranslatorList() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="urduDescription" className="block text-sm font-medium text-gray-700">Urdu Description</label>
+                    <label
+                      htmlFor="urduDescription"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Urdu Description*
+                    </label>
                     <textarea
                       id="urduDescription"
                       value={formData.urduDescription}
@@ -544,7 +842,12 @@ export default function TranslatorList() {
                 </div>
 
                 <div>
-                  <label htmlFor="image" className="block text-sm font-medium text-gray-700">Profile Picture</label>
+                  <label
+                    htmlFor="image"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Profile Picture
+                  </label>
                   <input
                     id="image"
                     type="file"
@@ -578,7 +881,9 @@ export default function TranslatorList() {
         {showViewCard && selectedTranslator && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-[1px] flex justify-center items-center z-50 p-4">
             <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <h2 className="text-xl font-semibold mb-4 text-center">Translator Details</h2>
+              <h2 className="text-xl font-semibold mb-4 text-center">
+                Translator Details
+              </h2>
               <div className="flex flex-col items-center gap-4">
                 <img
                   src={`${API_BASE_URL}/api/translators/image/${selectedTranslator.id}`}
@@ -586,15 +891,45 @@ export default function TranslatorList() {
                   className="w-24 h-24 object-cover rounded-full border border-gray-200"
                 />
                 <div className="w-full space-y-2">
-                  <p><span className="font-semibold">Name:</span> {selectedTranslator.name}</p>
-                  <p><span className="font-semibold">Designation:</span> {selectedTranslator.designation}</p>
+                  <div className="flex items-center justify-between">
+                    <p>
+                      <span className="font-semibold">Name:</span>{" "}
+                      {selectedTranslator.name}
+                    </p>
+                    <StatusBadge status={selectedTranslator.status} />
+                  </div>
+                  <p>
+                    <span className="font-semibold">Designation:</span>{" "}
+                    {selectedTranslator.designation}
+                  </p>
+
+                  <div>
+                    <span className="font-semibold">Languages:</span>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {splitLanguages(selectedTranslator.languages).map(
+                        (l, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700 ring-1 ring-gray-200"
+                          >
+                            {l}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  </div>
+
                   <div>
                     <span className="font-semibold">English Description:</span>
-                    <div className="mt-1 text-gray-700">{selectedTranslator.englishDescription}</div>
+                    <div className="mt-1 text-gray-700">
+                      {selectedTranslator.englishDescription}
+                    </div>
                   </div>
                   <div dir="rtl" className="text-right">
                     <span className="font-semibold">Urdu Description:</span>
-                    <div className="mt-1 text-gray-700">{selectedTranslator.urduDescription}</div>
+                    <div className="mt-1 text-gray-700">
+                      {selectedTranslator.urduDescription}
+                    </div>
                   </div>
                 </div>
                 <button

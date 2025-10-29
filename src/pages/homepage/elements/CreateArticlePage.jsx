@@ -1,126 +1,154 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { CalendarIcon, ImageIcon, Type, FileText, Users, Globe, Hash } from "lucide-react";
+import { CalendarIcon, Image as ImageIcon, Type, FileText, Users, Globe, Hash, X } from "lucide-react";
 import Layout from "../../../component/Layout";
 import axios from "axios";
 import Swal from "sweetalert2";
-import Select from 'react-select';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
-import Quill from 'quill';
+import Select from "react-select";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import Quill from "quill";
 import API_BASE_URL from "../../../../config";
 
-const Font = Quill.import('formats/font');
+/* ---------- Quill Fonts ---------- */
+const Font = Quill.import("formats/font");
 Font.whitelist = [
-  'sans-serif', 'serif', 'monospace',
-  'Amiri', 'Rubik-Bold', 'Rubik-Light',
-  'Scheherazade-Regular', 'Scheherazade-Bold',
-  'Aslam', 'Mehr-Nastaliq'
+  "sans-serif",
+  "serif",
+  "monospace",
+  "Amiri",
+  "Rubik-Bold",
+  "Rubik-Light",
+  "Scheherazade-Regular",
+  "Scheherazade-Bold",
+  "Aslam",
+  "Mehr-Nastaliq",
 ];
-
 Quill.register(Font, true);
 
-
+/* ---------- Helpers ---------- */
 const getCurrentDate = () => {
   const today = new Date();
   const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
-
-const modules = {
+/* ---------- Quill Config ---------- */
+const quillModules = {
   toolbar: [
     [
       {
         font: [
-          'Amiri',
-          'Rubik-Bold',
-          'Rubik-Light',
-          'Scheherazade-Regular',
-          'Scheherazade-Bold',
-          'Aslam',
-          'Mehr-Nastaliq',
-          'serif',
-          'sans-serif',
-          'monospace'
-        ]
+          "Amiri",
+          "Rubik-Bold",
+          "Rubik-Light",
+          "Scheherazade-Regular",
+          "Scheherazade-Bold",
+          "Aslam",
+          "Mehr-Nastaliq",
+          "serif",
+          "sans-serif",
+          "monospace",
+        ],
       },
-      { size: [] }
+      { size: [] },
     ],
-    ['bold', 'italic', 'underline', 'strike'],
+    ["bold", "italic", "underline", "strike"],
     [{ color: [] }, { background: [] }],
-    [{ script: 'sub' }, { script: 'super' }],
+    [{ script: "sub" }, { script: "super" }],
     [{ header: [1, 2, 3, 4, 5, 6, false] }],
     [{ align: [] }],
-    ['blockquote', 'code-block'],
-    [{ list: 'ordered' }, { list: 'bullet' }],
-    [{ indent: '-1' }, { indent: '+1' }],
-    ['link', 'image', 'video'],
-    ['clean']
-  ]
+    ["blockquote", "code-block"],
+    [{ list: "ordered" }, { list: "bullet" }],
+    [{ indent: "-1" }, { indent: "+1" }],
+    ["link", "image", "video"],
+    ["clean"],
+  ],
 };
 
-
-
-const formats = [
-  'font',
-  'size',
-  'bold', 'italic', 'underline', 'strike',
-  'color', 'background',
-  'script',
-  'header',
-  'align',
-  'blockquote', 'code-block',
-  'list', 'bullet',
-  'indent',
-  'link', 'image', 'video',
-  'clean'
+const quillFormats = [
+  "font",
+  "size",
+  "bold",
+  "italic",
+  "underline",
+  "strike",
+  "color",
+  "background",
+  "script",
+  "header",
+  "align",
+  "blockquote",
+  "code-block",
+  "list",
+  "bullet",
+  "indent",
+  "link",
+  "image",
+  "video",
+  "clean",
 ];
 
-
 export default function CreateArticlePage() {
+  /* ---------- Meta / selects ---------- */
   const [publicationDate, setPublicationDate] = useState(getCurrentDate());
   const [selectedTopic, setSelectedTopic] = useState("");
   const [selectedWriter, setSelectedWriter] = useState("");
   const [selectedTranslator, setSelectedTranslator] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("");
+
   const [topics, setTopics] = useState([]);
   const [languages, setLanguages] = useState([]);
   const [translators, setTranslators] = useState([]);
   const [writers, setWriters] = useState([]);
-  const [englishDescription, setEnglishDescription] = useState("");
-  const [urduDescription, setUrduDescription] = useState("");
   const [tags, setTags] = useState([]);
   const [selectedTag, setSelectedTag] = useState("");
+
+  /* ---------- Image ---------- */
   const [uploadedImageFile, setUploadedImageFile] = useState(null);
   const [uploadedImageURL, setUploadedImageURL] = useState(null);
+  const fileInputRef = useRef(null);
+
+  // NEW: upload progress UI
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  /* ---------- Article Title + Writer details ---------- */
   const [articleTitle, setArticleTitle] = useState("");
   const [writerDesignation, setWriterDesignation] = useState("");
   const [showCustomWriterInput, setShowCustomWriterInput] = useState(false);
   const [customWriterName, setCustomWriterName] = useState("");
 
-  const fileInputRef = useRef();
+  /* ---------- Language sections: Title + Description ---------- */
+  const [englishTitle, setEnglishTitle] = useState("");
+  const [englishDescription, setEnglishDescription] = useState("");
 
-  const handleDateChange = (e) => setPublicationDate(e.target.value);
+  const [urduTitle, setUrduTitle] = useState("");
+  const [urduDescription, setUrduDescription] = useState("");
 
+  const [romanTitle, setRomanTitle] = useState("");
+  const [romanDescription, setRomanDescription] = useState("");
+
+  const [hindiTitle, setHindiTitle] = useState("");
+  const [hindiDescription, setHindiDescription] = useState("");
+
+  /* ---------- Fetch data ---------- */
   useEffect(() => {
-    const fetchData = async () => {
+    (async () => {
       try {
         const [topicsRes, languagesRes, translatorsRes, writersRes, tagsRes] = await Promise.all([
           axios.get(`${API_BASE_URL}/api/topics`),
           axios.get(`${API_BASE_URL}/api/languages/language`),
           axios.get(`${API_BASE_URL}/api/translators`),
           axios.get(`${API_BASE_URL}/api/writers`),
-          axios.get(`${API_BASE_URL}/api/tags`)
+          axios.get(`${API_BASE_URL}/api/tags`),
         ]);
-
-        setTopics(topicsRes.data);
-        setLanguages(languagesRes.data);
-        setTranslators(translatorsRes.data);
-        setWriters(writersRes.data);
-        setTags(tagsRes.data);
+        setTopics(topicsRes.data || []);
+        setLanguages(languagesRes.data || []);
+        setTranslators(translatorsRes.data || []);
+        setWriters(writersRes.data || []);
+        setTags(tagsRes.data || []);
       } catch (error) {
         console.error("Error fetching data:", error);
         Swal.fire({
@@ -129,13 +157,12 @@ export default function CreateArticlePage() {
           text: "Failed to fetch required data. Please try again later.",
         });
       }
-    };
-
-    fetchData();
+    })();
   }, []);
 
+  /* ---------- Image upload (select/preview) ---------- */
   const handleImageUpload = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
@@ -146,105 +173,107 @@ export default function CreateArticlePage() {
       });
       return;
     }
-
     setUploadedImageFile(file);
 
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setUploadedImageURL(reader.result);
-    };
+    reader.onloadend = () => setUploadedImageURL(reader.result);
     reader.readAsDataURL(file);
   };
 
+  const clearImage = () => {
+    setUploadedImageFile(null);
+    setUploadedImageURL(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  /* ---------- Validation ---------- */
   const validateForm = () => {
-    const requiredFields = [
+    const required = [
       { value: articleTitle, name: "Article Title" },
       { value: selectedTopic, name: "Topic" },
-      { value: selectedWriter, name: "Writer" },
+      { value: showCustomWriterInput ? customWriterName : selectedWriter, name: "Writer" },
       { value: selectedLanguage, name: "Language" },
-      { value: publicationDate, name: "Publication Date" }
-      // Translator and Tag are removed from required fields
+      { value: publicationDate, name: "Publication Date" },
     ];
-
-    const missingFields = requiredFields.filter(field => !field.value);
-
-    if (missingFields.length > 0) {
+    const missing = required.filter((f) => !f.value);
+    if (missing.length) {
       Swal.fire({
         icon: "error",
         title: "Missing Fields",
-        html: `The following fields are required:<br><br>${missingFields.map(f => `• ${f.name}`).join('<br>')}`,
+        html: `Please fill:<br><br>${missing.map((m) => `• ${m.name}`).join("<br>")}`,
       });
       return false;
     }
-
     if (!uploadedImageFile) {
-      const result = window.confirm("Are you sure you want to continue without a featured image?");
-      if (!result) return false;
+      const ok = window.confirm("Continue without a featured image?");
+      if (!ok) return false;
     }
-
     return true;
   };
 
+  /* ---------- Save / Publish (with progress) ---------- */
   const handleSave = async (isPublish) => {
     if (!validateForm()) return;
 
     try {
-      Swal.fire({
-        title: "Processing...",
-        text: isPublish ? "Publishing your article" : "Saving your draft",
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
-      });
+      setIsUploading(true);
+      setUploadProgress(0);
 
       const formData = new FormData();
+      if (uploadedImageFile) formData.append("image", uploadedImageFile);
 
-      if (uploadedImageFile) {
-        formData.append("image", uploadedImageFile);
-      }
-
+      // Core
       formData.append("title", articleTitle);
-      formData.append("englishDescription", englishDescription || "");
-      formData.append("urduDescription", urduDescription || "");
       formData.append("topic", selectedTopic);
       formData.append("writers", showCustomWriterInput ? customWriterName : selectedWriter);
-      formData.append("writerDesignation", writerDesignation);
+      formData.append("writerDesignation", writerDesignation || "");
       formData.append("language", selectedLanguage);
       formData.append("date", publicationDate);
       formData.append("isPublished", isPublish);
       formData.append("createdAt", new Date().toISOString());
 
-      // Only append optional fields if they have values
-      if (selectedTranslator) {
-        formData.append("translator", selectedTranslator);
-      }
+      // Language payloads
+      formData.append("englishTitle", englishTitle || "");
+      formData.append("englishDescription", englishDescription || "");
 
-      if (selectedTag) {
-        formData.append("tags", selectedTag);
-      }
+      formData.append("urduTitle", urduTitle || "");
+      formData.append("urduDescription", urduDescription || "");
+
+      formData.append("romanUrduTitle", romanTitle || "");
+      formData.append("romanUrduDescription", romanDescription || "");
+
+      formData.append("hindiTitle", hindiTitle || "");
+      formData.append("hindiDescription", hindiDescription || "");
+
+      // Optional
+      if (selectedTranslator) formData.append("translator", selectedTranslator);
+      if (selectedTag) formData.append("tags", selectedTag);
 
       await axios.post(`${API_BASE_URL}/api/articles`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (evt) => {
+          if (!evt.total) return; // total may be undefined
+          const percent = Math.round((evt.loaded * 100) / evt.total);
+          setUploadProgress(percent);
         },
       });
 
+      setIsUploading(false);
+      setUploadProgress(100);
+
       Swal.fire({
         icon: "success",
-        title: isPublish ? "Published!" : "Draft Saved!",
-        text: isPublish
-          ? "Your article has been successfully published."
-          : "Your draft has been saved.",
-        timer: 3000,
+        title: isPublish ? "Published!" : "Draft Saved",
+        timer: 1800,
         showConfirmButton: false,
       });
 
       setTimeout(() => {
         window.location.href = "/viewarticle";
-      }, 3000);
+      }, 1800);
     } catch (error) {
       console.error("Error saving article:", error);
+      setIsUploading(false);
       Swal.fire({
         icon: "error",
         title: "Failed",
@@ -253,54 +282,134 @@ export default function CreateArticlePage() {
     }
   };
 
-
-  const tagOptions = tags.map(tag => ({
-    value: tag.tag,
-    label: tag.tag
-  }));
-
-  const topicOptions = topics.map(topic => ({
-    value: topic.topic,
-    label: topic.topic
-  }));
+  /* ---------- Select options ---------- */
+  const tagOptions = (tags || []).map((t) => ({ value: t.tag, label: t.tag }));
+  const topicOptions = (topics || []).map((t) => ({ value: t.topic, label: t.topic }));
 
   return (
     <Layout>
-      <div className="min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-6">
-          <h1 className="text-2xl font-bold mb-8">Create Article</h1>
+      {/* Scoped styling */}
+      <style>{`
+        .rt-card .ql-toolbar {
+          border: 1px solid #e5e7eb !important;
+          border-bottom: 0 !important;
+          border-top-left-radius: 0.75rem;
+          border-top-right-radius: 0.75rem;
+          background: #fff;
+        }
+        .rt-card .ql-container {
+          border: 1px solid #e5e7eb !important;
+          border-bottom-left-radius: 0.75rem;
+          border-bottom-right-radius: 0.75rem;
+          background: #fff;
+        }
+        .rt-card .ql-editor {
+          min-height: 260px;
+          font-size: 16px;
+          line-height: 1.75;
+          padding-bottom: 2.5rem;
+        }
+        .rt-card:focus-within .ql-toolbar,
+        .rt-card:focus-within .ql-container {
+          border-color: #93c5fd !important;
+          box-shadow: 0 0 0 4px rgba(59,130,246,.15);
+        }
+      `}</style>
 
-          <div className="bg-slate-50 rounded-lg p-8">
-            <div className="mb-6">
-              <label className="text-sm font-medium mb-2 block">Featured Image</label>
-              <div className="max-w-md mx-auto">
+      <div className="min-h-screen bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Create Article</h1>
+            <p className="text-sm text-gray-500 mt-1">Write comfortably. Publish confidently.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* LEFT: Content Workspace */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Featured Image */}
+              <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <label className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4" />
+                  Featured Image
+                </label>
+
                 <div
-                  className="border border-dashed rounded-lg p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:border-gray-400 transition"
-                  onClick={() => fileInputRef.current.click()}
+                  className="mt-2 border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer hover:bg-gray-50 transition relative"
+                  onClick={(e) => {
+                    // If clicking the remove button, don't open file dialog
+                    if ((e.target).closest?.(".btn-remove-image")) return;
+                    fileInputRef.current?.click();
+                  }}
                 >
                   {uploadedImageURL ? (
-                    <img
-                      src={uploadedImageURL}
-                      alt="Uploaded Preview"
-                      className="w-60 h-60 object-cover rounded-md"
-                    />
-                  ) : (
-                    <>
-                      <div className="w-16 h-16 mb-4 text-muted-foreground">
-                        <ImageIcon className="w-full h-full" />
-                      </div>
-                      <p className="text-base mb-1">Drop your image here, or click to browse</p>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Supported formats: PNG, JPG, GIF (max 5MB)
-                      </p>
+                    <div className="relative inline-block">
+                      <img
+                        src={uploadedImageURL}
+                        alt="Preview"
+                        className="mx-auto w-64 h-64 object-cover rounded-xl shadow"
+                      />
+
+                      {/* Remove image button */}
                       <button
                         type="button"
-                        className="border px-4 py-2 rounded-md text-sm bg-transparent border-gray-400 hover:border-gray-500"
+                        title="Remove image"
+                        className="btn-remove-image absolute -right-3 -top-3 bg-white/90 border border-gray-300 rounded-full p-1 shadow hover:bg-white"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearImage();
+                        }}
+                      >
+                        <X className="w-4 h-4 text-gray-700" />
+                      </button>
+
+                      {/* Upload progress overlay */}
+                      {isUploading && (
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] rounded-xl flex flex-col justify-end">
+                          <div className="px-4 pb-4 text-white text-sm">
+                            <div className="mb-2 flex items-center justify-between">
+                              <span>Uploading image…</span>
+                              <span>{uploadProgress}%</span>
+                            </div>
+                            <div className="h-2 w-full bg-white/30 rounded-full overflow-hidden">
+                              <div
+                                className="h-2 bg-white rounded-full transition-all"
+                                style={{ width: `${uploadProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <ImageIcon className="w-10 h-10 mb-3 text-gray-400" />
+                      <p className="text-base">Drop your image here, or click to browse</p>
+                      <p className="text-sm text-gray-500 mt-1">PNG, JPG, GIF up to 5MB</p>
+                      <button
+                        type="button"
+                        className="mt-4 px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-100"
                       >
                         Browse Files
                       </button>
-                    </>
+
+                      {/* Progress bar when no preview yet (still uploading during submit) */}
+                      {isUploading && (
+                        <div className="mt-6 w-full max-w-sm text-left">
+                          <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
+                            <span>Uploading image…</span>
+                            <span>{uploadProgress}%</span>
+                          </div>
+                          <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-2 bg-gray-600 rounded-full transition-all"
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
+
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -309,227 +418,331 @@ export default function CreateArticlePage() {
                     onChange={handleImageUpload}
                   />
                 </div>
-              </div>
+              </section>
+
+              {/* Article Title */}
+              <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Type className="w-4 h-4" />
+                  <label className="text-sm font-medium">Article Title</label>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Enter main article title"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm outline-none focus:ring-2 focus:ring-blue-300"
+                  value={articleTitle}
+                  onChange={(e) => setArticleTitle(e.target.value)}
+                  required
+                />
+              </section>
+
+              {/* Language Blocks */}
+              <section className="space-y-8">
+                {/* English */}
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="w-4 h-4" />
+                    <h2 className="text-sm font-semibold">English</h2>
+                  </div>
+                  <div className="grid gap-4">
+                    <input
+                      type="text"
+                      placeholder="English Title"
+                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm outline-none focus:ring-2 focus:ring-blue-300"
+                      value={englishTitle}
+                      onChange={(e) => setEnglishTitle(e.target.value)}
+                    />
+                    <div className="rt-card">
+                      <ReactQuill
+                        theme="snow"
+                        value={englishDescription}
+                        onChange={setEnglishDescription}
+                        modules={quillModules}
+                        formats={quillFormats}
+                        className="bg-white"
+                        style={{ direction: "ltr", textAlign: "left" }}
+                        placeholder="Write English content..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Urdu */}
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="w-4 h-4" />
+                    <h2 className="text-sm font-semibold">Urdu</h2>
+                  </div>
+                  <div className="grid gap-4">
+                    <input
+                      type="text"
+                      placeholder="Urdu Title"
+                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm outline-none focus:ring-2 focus:ring-blue-300"
+                      value={urduTitle}
+                      onChange={(e) => setUrduTitle(e.target.value)}
+                    />
+                    <div className="rt-card">
+                      <ReactQuill
+                        theme="snow"
+                        value={urduDescription}
+                        onChange={setUrduDescription}
+                        modules={quillModules}
+                        formats={quillFormats}
+                        className="bg-white"
+                        style={{ direction: "rtl", textAlign: "right" }}
+                        placeholder="اردو متن تحریر کریں..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Roman Urdu */}
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="w-4 h-4" />
+                    <h2 className="text-sm font-semibold">Roman Urdu</h2>
+                  </div>
+                  <div className="grid gap-4">
+                    <input
+                      type="text"
+                      placeholder="Roman Urdu Title"
+                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm outline-none focus:ring-2 focus:ring-blue-300"
+                      value={romanTitle}
+                      onChange={(e) => setRomanTitle(e.target.value)}
+                    />
+                    <div className="rt-card">
+                      <ReactQuill
+                        theme="snow"
+                        value={romanDescription}
+                        onChange={setRomanDescription}
+                        modules={quillModules}
+                        formats={quillFormats}
+                        className="bg-white"
+                        style={{ direction: "ltr", textAlign: "left" }}
+                        placeholder="Roman Urdu content..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hindi */}
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="w-4 h-4" />
+                    <h2 className="text-sm font-semibold">Hindi</h2>
+                  </div>
+                  <div className="grid gap-4">
+                    <input
+                      type="text"
+                      placeholder="Hindi Title"
+                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm outline-none focus:ring-2 focus:ring-blue-300"
+                      value={hindiTitle}
+                      onChange={(e) => setHindiTitle(e.target.value)}
+                    />
+                    <div className="rt-card">
+                      <ReactQuill
+                        theme="snow"
+                        value={hindiDescription}
+                        onChange={setHindiDescription}
+                        modules={quillModules}
+                        formats={quillFormats}
+                        className="bg-white"
+                        style={{ direction: "ltr", textAlign: "left" }}
+                        placeholder="हिंदी सामग्री लिखें..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              </section>
             </div>
 
+            {/* RIGHT: Article Settings */}
+            <aside className="space-y-6">
+              {/* Topic */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="w-4 h-4" />
+                  <label className="text-sm font-medium">Topic</label>
+                </div>
+                <Select
+                  options={topicOptions}
+                  value={topicOptions.find((o) => o.value === selectedTopic) || null}
+                  onChange={(opt) => setSelectedTopic(opt?.value || "")}
+                  placeholder="Select a topic..."
+                  isSearchable
+                  className="text-sm"
+                />
+              </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Type className="w-4 h-4" />
-                    <label className="text-sm font-medium">Article Title</label>
+              {/* Language */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Globe className="w-4 h-4" />
+                  <label className="text-sm font-medium">Primary Language</label>
+                </div>
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => setSelectedLanguage(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm outline-none focus:ring-2 focus:ring-blue-300"
+                  required
+                >
+                  <option value="">Select a language</option>
+                  {languages.map((l) => (
+                    <option key={l.id} value={l.language}>
+                      {l.language}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Writer */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-4 h-4" />
+                  <label className="text-sm font-medium">Writer</label>
+                </div>
+                <select
+                  value={showCustomWriterInput ? "custom" : selectedWriter}
+                  onChange={(e) => {
+                    if (e.target.value === "custom") {
+                      setShowCustomWriterInput(true);
+                      setSelectedWriter("");
+                      setWriterDesignation("");
+                    } else {
+                      setShowCustomWriterInput(false);
+                      setCustomWriterName("");
+                      setSelectedWriter(e.target.value);
+                      const selected = writers.find((w) => w.name === e.target.value);
+                      setWriterDesignation(selected?.designation || "");
+                    }
+                  }}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm outline-none focus:ring-2 focus:ring-blue-300"
+                  required
+                >
+                  <option value="">Select a writer</option>
+                  {writers.map((w) => (
+                    <option key={w.id} value={w.name}>
+                      {w.name}
+                    </option>
+                  ))}
+                  <option value="custom">+ Add Custom Writer</option>
+                </select>
+
+                {showCustomWriterInput && (
+                  <div className="mt-3 space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Custom writer name"
+                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm outline-none focus:ring-2 focus:ring-blue-300"
+                      value={customWriterName}
+                      onChange={(e) => {
+                        setCustomWriterName(e.target.value);
+                        setSelectedWriter(e.target.value);
+                      }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="text-sm text-blue-600 hover:underline"
+                      onClick={() => {
+                        setShowCustomWriterInput(false);
+                        setCustomWriterName("");
+                        setSelectedWriter("");
+                      }}
+                    >
+                      Cancel
+                    </button>
                   </div>
+                )}
+
+                <div className="mt-4">
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Writer Designation (optional)</label>
                   <input
                     type="text"
-                    placeholder="Enter your article title"
-                    className="border rounded-lg p-2 w-full"
-                    value={articleTitle}
-                    onChange={(e) => setArticleTitle(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="w-4 h-4" />
-                    <label className="text-sm font-medium">English Description</label>
-                  </div>
-                  <ReactQuill
-                    theme="snow"
-                    value={englishDescription}
-                    onChange={setEnglishDescription}
-                    modules={modules}
-                    formats={formats}
-                    className="bg-white border rounded-lg min-h-[136px] text-left"
-                    style={{ direction: 'ltr', textAlign: 'left' }}
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="w-4 h-4" />
-                    <label className="text-sm font-medium">Urdu Description</label>
-                  </div>
-                  <ReactQuill
-                    theme="snow"
-                    value={urduDescription}
-                    onChange={setUrduDescription}
-                    modules={modules}
-                    formats={formats}
-                    className="bg-white border rounded-lg min-h-[136px] text-right"
-                    style={{ direction: 'rtl', textAlign: 'right' }}
-                    placeholder="Enter Urdu description"
+                    placeholder="e.g., Senior Scholar, Editor"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm outline-none focus:ring-2 focus:ring-blue-300"
+                    value={writerDesignation}
+                    onChange={(e) => setWriterDesignation(e.target.value)}
                   />
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="space-y-6">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="w-4 h-4" />
-                      <label className="text-sm font-medium">Topic</label>
-                    </div>
-                    <Select
-                      options={topicOptions}
-                      value={topicOptions.find(option => option.value === selectedTopic)}
-                      onChange={(selectedOption) => setSelectedTopic(selectedOption?.value || '')}
-                      placeholder="Select a topic..."
-                      isSearchable
-                      className="w-full"
-                    />
-                  </div>
+              {/* Translator (optional) */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-4 h-4" />
+                  <label className="text-sm font-medium">Translator (optional)</label>
                 </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Globe className="w-4 h-4" />
-                    <label className="text-sm font-medium">Language</label>
-                  </div>
-                  <select
-                    value={selectedLanguage}
-                    onChange={(e) => setSelectedLanguage(e.target.value)}
-                    className="border rounded-lg p-2 w-full"
-                    required
-                  >
-                    <option value="">Select a language</option>
-                    {languages.map((language) => (
-                      <option key={language.id} value={language.language}>
-                        {language.language}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Users className="w-4 h-4" />
-                    <label className="text-sm font-medium">Writer</label>
-                  </div>
-                  <select
-                    value={showCustomWriterInput ? "custom" : selectedWriter}
-                    onChange={(e) => {
-                      if (e.target.value === "custom") {
-                        setShowCustomWriterInput(true);
-                        setSelectedWriter(""); // Reset any previously selected writer
-                        setWriterDesignation("");
-                      } else {
-                        setShowCustomWriterInput(false);
-                        setCustomWriterName(""); // Reset custom name if any
-                        setSelectedWriter(e.target.value);
-                        const selected = writers.find(w => w.name === e.target.value);
-                        setWriterDesignation(selected?.designation || "");
-                      }
-                    }}
-                    className="border rounded-lg p-2 w-full"
-                    required
-                  >
-                    <option value="">Select a writer</option>
-                    {writers.map((writer) => (
-                      <option key={writer.id} value={writer.name}>
-                        {writer.name}
-                      </option>
-                    ))}
-                    <option value="custom">+ Add Custom Writer</option>
-                  </select>
-
-                  {showCustomWriterInput && (
-                    <div className="mt-2 space-y-2">
-                      <input
-                        type="text"
-                        placeholder="Enter custom writer name"
-                        className="border rounded-lg p-2 w-full"
-                        value={customWriterName}
-                        onChange={(e) => {
-                          setCustomWriterName(e.target.value);
-                          setSelectedWriter(e.target.value);
-                        }}
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="text-sm text-blue-500 hover:text-blue-700"
-                        onClick={() => {
-                          setShowCustomWriterInput(false);
-                          setCustomWriterName("");
-                          setSelectedWriter("");
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Users className="w-4 h-4" />
-                    <label className="text-sm font-medium">Translator</label>
-                  </div>
-                  <select
-                    value={selectedTranslator}
-                    onChange={(e) => setSelectedTranslator(e.target.value)}
-                    className="border rounded-lg p-2 w-full"
-                    required
-                  >
-                    <option value="">Select a translator</option>
-                    {translators.map((translator) => (
-                      <option key={translator.id} value={translator.name}>
-                        {translator.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Hash className="w-4 h-4" />
-                    <label className="text-sm font-medium">Tags</label>
-                  </div>
-                  <Select
-                    options={tagOptions}
-                    value={tagOptions.find(option => option.value === selectedTag)}
-                    onChange={(selectedOption) => setSelectedTag(selectedOption?.value || '')}
-                    placeholder="Select tags..."
-                    isSearchable
-                    className="w-full"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <CalendarIcon className="w-4 h-4" />
-                    <label className="text-sm font-medium">Publication Date</label>
-                  </div>
-                  <input
-                    type="date"
-                    value={publicationDate}
-                    onChange={handleDateChange}
-                    className="border rounded-lg p-2 w-full"
-                    required
-                  />
-                </div>
+                <select
+                  value={selectedTranslator}
+                  onChange={(e) => setSelectedTranslator(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm outline-none focus:ring-2 focus:ring-blue-300"
+                >
+                  <option value="">Select a translator</option>
+                  {translators.map((t) => (
+                    <option key={t.id} value={t.name}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
 
-            <div className="mt-8 flex justify-between">
-              <button
-                type="button"
-                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md transition"
-                onClick={() => handleSave(false)}
-              >
-                Save as Draft
-              </button>
-              <button
-                type="button"
-                className="bg-[#5a6c17] hover:bg-[rgba(90,108,23,0.83)] text-white px-4 py-2 rounded-md transition"
-                onClick={() => handleSave(true)}
-              >
-                Publish
-              </button>
-            </div>
+              {/* Tags */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Hash className="w-4 h-4" />
+                  <label className="text-sm font-medium">Tags</label>
+                </div>
+                <Select
+                  options={tagOptions}
+                  value={tagOptions.find((o) => o.value === selectedTag) || null}
+                  onChange={(opt) => setSelectedTag(opt?.value || "")}
+                  placeholder="Select a tag..."
+                  isSearchable
+                  className="text-sm"
+                />
+              </div>
+
+              {/* Publication Date */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <CalendarIcon className="w-4 h-4" />
+                  <label className="text-sm font-medium">Publication Date</label>
+                </div>
+                <input
+                  type="date"
+                  value={publicationDate}
+                  onChange={(e) => setPublicationDate(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm outline-none focus:ring-2 focus:ring-blue-300"
+                  required
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    className="w-1/2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-xl font-medium transition shadow-sm disabled:opacity-60"
+                    onClick={() => handleSave(false)}
+                    disabled={isUploading}
+                  >
+                    Save as Draft
+                  </button>
+                  <button
+                    type="button"
+                    className="w-1/2 bg-[#5a6c17] hover:bg-[rgba(90,108,23,0.9)] text-white px-4 py-3 rounded-xl font-semibold transition shadow-sm disabled:opacity-60"
+                    onClick={() => handleSave(true)}
+                    disabled={isUploading}
+                  >
+                    Publish
+                  </button>
+                </div>
+                {isUploading && (
+                  <p className="mt-3 text-xs text-gray-500 text-center">Please wait—upload in progress…</p>
+                )}
+              </div>
+            </aside>
           </div>
         </div>
       </div>

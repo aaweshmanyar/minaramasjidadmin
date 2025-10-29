@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { CalendarIcon } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { CalendarIcon, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../../component/Layout";
 import ReactQuill from "react-quill";
@@ -7,72 +7,90 @@ import DatePicker from "react-datepicker";
 import "react-quill/dist/quill.snow.css";
 import "react-datepicker/dist/react-datepicker.css";
 import Swal from "sweetalert2";
-import Quill from 'quill';
+import Quill from "quill";
 import API_BASE_URL from "../../../../config";
 
-const Font = Quill.import('formats/font');
+/* ---------- Quill Fonts ---------- */
+const Font = Quill.import("formats/font");
 Font.whitelist = [
-  'sans-serif', 'serif', 'monospace',
-  'Amiri', 'Rubik-Bold', 'Rubik-Light',
-  'Scheherazade-Regular', 'Scheherazade-Bold',
-  'Aslam', 'Mehr-Nastaliq'
+  "sans-serif",
+  "serif",
+  "monospace",
+  "Amiri",
+  "Rubik-Bold",
+  "Rubik-Light",
+  "Scheherazade-Regular",
+  "Scheherazade-Bold",
+  "Aslam",
+  "Mehr-Nastaliq",
 ];
-
 Quill.register(Font, true);
 
+/* ---------- Quill Config ---------- */
 const modules = {
   toolbar: [
     [
       {
         font: [
-          'Amiri',
-          'Rubik-Bold',
-          'Rubik-Light',
-          'Scheherazade-Regular',
-          'Scheherazade-Bold',
-          'Aslam',
-          'Mehr-Nastaliq',
-          'serif',
-          'sans-serif',
-          'monospace'
-        ]
+          "Amiri",
+          "Rubik-Bold",
+          "Rubik-Light",
+          "Scheherazade-Regular",
+          "Scheherazade-Bold",
+          "Aslam",
+          "Mehr-Nastaliq",
+          "serif",
+          "sans-serif",
+          "monospace",
+        ],
       },
-      { size: [] }
+      { size: [] },
     ],
-    ['bold', 'italic', 'underline', 'strike'],
+    ["bold", "italic", "underline", "strike"],
     [{ color: [] }, { background: [] }],
-    [{ script: 'sub' }, { script: 'super' }],
+    [{ script: "sub" }, { script: "super" }],
     [{ header: [1, 2, 3, 4, 5, 6, false] }],
     [{ align: [] }],
-    ['blockquote', 'code-block'],
-    [{ list: 'ordered' }, { list: 'bullet' }],
-    [{ indent: '-1' }, { indent: '+1' }],
-    ['link', 'image', 'video'],
-    ['clean']
-  ]
+    ["blockquote", "code-block"],
+    [{ list: "ordered" }, { list: "bullet" }],
+    [{ indent: "-1" }, { indent: "+1" }],
+    ["link", "image", "video"],
+    ["clean"],
+  ],
 };
 
 const formats = [
-  'font',
-  'size',
-  'bold', 'italic', 'underline', 'strike',
-  'color', 'background',
-  'script',
-  'header',
-  'align',
-  'blockquote', 'code-block',
-  'list', 'bullet',
-  'indent',
-  'link', 'image', 'video',
-  'clean'
+  "font",
+  "size",
+  "bold",
+  "italic",
+  "underline",
+  "strike",
+  "color",
+  "background",
+  "script",
+  "header",
+  "align",
+  "blockquote",
+  "code-block",
+  "list",
+  "bullet",
+  "indent",
+  "link",
+  "image",
+  "video",
+  "clean",
 ];
 
-
-// Button component (unused in the form but kept for completeness)
+/* ---------- Small UI helpers ---------- */
 const Button = ({ children, className = "", variant = "", ...props }) => (
   <button
     type="button"
-    className={`px-4 py-2 rounded ${variant === "outline" ? "border" : ""} ${className}`}
+    className={`px-4 py-2 rounded-lg font-medium shadow-sm transition ${
+      variant === "outline"
+        ? "border bg-white hover:bg-gray-50"
+        : "bg-gray-900 text-white hover:bg-black"
+    } ${className}`}
     {...props}
   >
     {children}
@@ -85,18 +103,21 @@ const Input = ({ id, placeholder, type = "text", value, onChange, name, required
     name={name}
     type={type}
     placeholder={placeholder}
-    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white outline-none shadow-sm focus:ring-2 focus:ring-blue-300"
     value={value}
     onChange={onChange}
     required={required}
   />
 );
 
-const Label = ({ htmlFor, children, required = false }) => (
-  <label htmlFor={htmlFor} className="block text-sm font-medium mb-1">
-    {children}
-    {required && <span className="text-red-500 ml-1">*</span>}
-  </label>
+const Label = ({ htmlFor, children, required = false, hint }) => (
+  <div className="mb-1">
+    <label htmlFor={htmlFor} className="block text-sm font-medium">
+      {children}
+      {required && <span className="text-red-500 ml-1">*</span>}
+    </label>
+    {hint && <p className="text-xs text-gray-500 mt-0.5">{hint}</p>}
+  </div>
 );
 
 const Select = ({ value, onChange, name, children, required = false }) => (
@@ -104,83 +125,153 @@ const Select = ({ value, onChange, name, children, required = false }) => (
     name={name}
     value={value}
     onChange={onChange}
-    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white outline-none shadow-sm focus:ring-2 focus:ring-blue-300"
     required={required}
   >
     {children}
   </select>
 );
 
-
-
-
-
-const FileUpload = ({ type, onChange, progress, showSuccessMessage, required = false }) => {
+/* ---------- File upload with preview + same PDF progress logic ---------- */
+const FileUpload = ({
+  type,
+  onChange,
+  onRemove,           // NEW: parent clear callback (used for image)
+  progress,
+  showSuccessMessage,
+  required = false,
+}) => {
   const [fileSelected, setFileSelected] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [fileName, setFileName] = useState("");
+  const [fileSize, setFileSize] = useState(0);
+  const inputRef = useRef(null);
 
   const handleFileChange = (e) => {
     if (e.target.files.length > 0) {
       setFileSelected(true);
+      const file = e.target.files[0];
+      setFileName(file.name);
+      setFileSize(file.size);
 
       if (type === "image") {
-        const file = e.target.files[0];
-        if (!file.type.match('image.*')) {
-          alert('Please select an image file');
+        if (!file.type.match("image.*")) {
+          alert("Please select an image file");
+          // reset input
+          if (inputRef.current) inputRef.current.value = "";
+          setFileSelected(false);
+          setFileName("");
+          setFileSize(0);
           return;
         }
         const reader = new FileReader();
-        reader.onloadend = () => {
-          setPreviewUrl(reader.result);
-        };
+        reader.onloadend = () => setPreviewUrl(reader.result);
         reader.readAsDataURL(file);
       }
     } else {
       setFileSelected(false);
       setPreviewUrl(null);
+      setFileName("");
+      setFileSize(0);
     }
     onChange(e);
   };
 
+  const handleRemoveImage = (e) => {
+    e.stopPropagation();
+    // clear local
+    setFileSelected(false);
+    setPreviewUrl(null);
+    setFileName("");
+    setFileSize(0);
+    // clear input element
+    if (inputRef.current) inputRef.current.value = "";
+    // notify parent to clear state
+    if (onRemove) onRemove();
+  };
+
+  const prettySize = (s) => {
+    if (!s && s !== 0) return "";
+    if (s < 1024) return `${s} B`;
+    if (s < 1024 * 1024) return `${(s / 1024).toFixed(1)} KB`;
+    return `${(s / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
   return (
-    <div className="relative">
-      <input
-        type="file"
-        accept={type === "image" ? "image/*" : ".pdf"}
-        className="w-full p-2 border rounded file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-        onChange={handleFileChange}
-        required={required}
-      />
-
-      {type === "image" && previewUrl && (
-        <div className="mt-2">
-          <div className="text-sm text-gray-600 mb-2">Preview:</div>
-          <img
-            src={previewUrl}
-            alt="Preview"
-            className="max-h-60 rounded border object-contain"
-            style={{ maxWidth: '70%' }}
+    <div>
+      <label
+        className="block w-full border-2 border-dashed border-gray-200 rounded-2xl p-4 hover:bg-gray-50 cursor-pointer transition"
+        title="Click to select a file"
+      >
+        <div className="flex items-center gap-3">
+          <input
+            ref={inputRef}
+            type="file"
+            accept={type === "image" ? "image/*" : ".pdf"}
+            className="hidden"
+            onChange={handleFileChange}
+            required={required}
           />
+          <div className="flex-1">
+            <div className="text-sm font-medium">
+              {type === "image" ? "Select cover image" : "Select PDF file"}
+            </div>
+            <div className="text-xs text-gray-500">
+              {type === "image" ? "PNG/JPG up to 5MB" : "PDF up to 10MB"}
+            </div>
+          </div>
+          <span className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-700">Browse</span>
         </div>
-      )}
+      </label>
 
-      {type === "pdf" && fileSelected && progress > 0 && progress < 100 && (
-        <div className="mt-2">
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
-            <div
-              className="bg-blue-600 h-2.5 rounded-full"
-              style={{
-                width: `${progress}%`,
-                transition: "width 0.5s ease-in-out",
-              }}
+      {/* IMAGE preview + remove */}
+      {type === "image" && previewUrl && (
+        <div className="mt-3 relative inline-block">
+          <div className="rounded-xl border border-gray-200 bg-white p-2 inline-block shadow-sm">
+            <img
+              src={previewUrl}
+              alt="Preview"
+              className="max-h-56 rounded-md object-contain"
+              style={{ maxWidth: "72vw" }}
             />
           </div>
-          <div className="text-center mt-1 text-sm text-gray-600">{`${Math.round(progress)}%`}</div>
+          <button
+            type="button"
+            title="Remove image"
+            className="absolute -right-2 -top-2 bg-white border border-gray-300 rounded-full p-1 shadow hover:bg-gray-50"
+            onClick={handleRemoveImage}
+          >
+            <X className="w-4 h-4 text-gray-700" />
+          </button>
         </div>
       )}
 
-      {type === "pdf" && fileSelected && progress === 100 && showSuccessMessage && (
-        <div className="text-green-600 text-sm mt-2 text-center">Upload Successful!</div>
+      {/* PDF filename + progress + success */}
+      {type === "pdf" && fileSelected && (
+        <div className="mt-3">
+          <div className="text-sm">
+            <span className="font-medium">{fileName || "Selected file"}</span>
+            {fileSize ? <span className="text-gray-500"> — {prettySize(fileSize)}</span> : null}
+          </div>
+
+          {progress > 0 && progress < 100 && (
+            <div className="mt-2">
+              <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-blue-600 h-2.5 rounded-full"
+                  style={{ width: `${progress}%`, transition: "width 0.4s ease" }}
+                />
+              </div>
+              <div className="text-center mt-1 text-sm text-gray-600">{`${Math.round(
+                progress
+              )}%`}</div>
+            </div>
+          )}
+
+          {progress === 100 && showSuccessMessage && (
+            <div className="text-green-600 text-sm mt-2">Upload Successful!</div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -193,7 +284,7 @@ export default function CreateBookPage() {
     author: "",
     translator: "",
     language: "",
-    bookDate: new Date(), // Set default to current date
+    bookDate: new Date(),
     status: "",
     category: "",
     isbn: "",
@@ -210,12 +301,13 @@ export default function CreateBookPage() {
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
 
+  /* ---------- Fetch lists ---------- */
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [langRes, transRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/languages/language`),
-          fetch(`${API_BASE_URL}/api/translators`)
+          fetch(`${API_BASE_URL}/api/translators`),
         ]);
 
         if (!langRes.ok) throw new Error("Failed to fetch languages");
@@ -228,13 +320,13 @@ export default function CreateBookPage() {
         if (Array.isArray(transData)) setTranslators(transData);
       } catch (err) {
         console.error("Error fetching data:", err);
-        // Consider adding error state to show to user
       }
     };
 
     fetchData();
   }, []);
 
+  /* ---------- Validation ---------- */
   const validateForm = () => {
     const newErrors = {};
     if (!formData.title.trim()) newErrors.title = "Title is required";
@@ -246,22 +338,27 @@ export default function CreateBookPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  /* ---------- Change Handlers ---------- */
   const handleFileChange = (e, field) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file size (5MB for images, 10MB for PDFs)
+    // size: 5MB image, 10MB pdf
     const maxSize = field === "coverImage" ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
     if (file.size > maxSize) {
       alert(`File size should be less than ${maxSize / (1024 * 1024)}MB`);
       e.target.value = "";
-      setErrors(prev => ({ ...prev, [field]: `File too large (max ${maxSize / (1024 * 1024)}MB)` }));
+      setErrors((prev) => ({
+        ...prev,
+        [field]: `File too large (max ${maxSize / (1024 * 1024)}MB)`,
+      }));
       return;
     }
 
     setFormData({ ...formData, [field]: file });
-    setErrors(prev => ({ ...prev, [field]: null }));
+    setErrors((prev) => ({ ...prev, [field]: null }));
 
+    // keep your existing simulated progress for PDFs
     if (field === "attachment") {
       let uploaded = 0;
       const totalSize = file.size;
@@ -275,36 +372,35 @@ export default function CreateBookPage() {
 
         if (progress === 100) {
           clearInterval(interval);
-          setTimeout(() => {
-            setShowSuccessMessage(true);
-          }, 300);
+          setTimeout(() => setShowSuccessMessage(true), 300);
         }
       }, 100);
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    setErrors(prev => ({ ...prev, [name]: null }));
+  const handleRemoveCoverImage = () => {
+    setFormData((prev) => ({ ...prev, coverImage: null }));
+    setErrors((prev) => ({ ...prev, coverImage: "Cover image is required" })); // keeps validation honest
   };
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: null }));
+  };
+
+  /* ---------- Submit ---------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
 
-    // Show loader using SweetAlert2
     Swal.fire({
-      title: 'Submitting...',
+      title: "Submitting...",
       allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      },
+      didOpen: () => Swal.showLoading(),
     });
 
     const payload = new FormData();
@@ -335,19 +431,15 @@ export default function CreateBookPage() {
         throw new Error(errData.message || "Failed to create book");
       }
 
-      // Success alert
-      // Success alert with redirection
       Swal.fire({
-        icon: 'success',
-        title: 'Book created successfully!',
+        icon: "success",
+        title: "Book created successfully!",
         showConfirmButton: false,
         timer: 2000,
       }).then(() => {
         navigate("/booklist");
       });
 
-
-      // Reset form
       setFormData({
         title: "",
         description: "",
@@ -367,11 +459,9 @@ export default function CreateBookPage() {
       setErrors({});
     } catch (error) {
       console.error("Error creating book:", error);
-
-      // Error alert
       Swal.fire({
-        icon: 'error',
-        title: 'Error',
+        icon: "error",
+        title: "Error",
         text: error.message || "Error creating book. Please try again.",
       });
     } finally {
@@ -379,165 +469,272 @@ export default function CreateBookPage() {
     }
   };
 
+  /* ---------- Render ---------- */
   return (
     <Layout>
-      <div className="min-h-screen px-4 py-6 max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Create Book</h1>
+      {/* Editor & card tweaks */}
+      <style>{`
+        .rt-card .ql-toolbar {
+          border: 1px solid #e5e7eb !important;
+          border-bottom: 0 !important;
+          border-top-left-radius: 0.75rem;
+          border-top-right-radius: 0.75rem;
+          background: #fff;
+        }
+        .rt-card .ql-container {
+          border: 1px solid #e5e7eb !important;
+          border-bottom-left-radius: 0.75rem;
+          border-bottom-right-radius: 0.75rem;
+          background: #fff;
+        }
+        .rt-card .ql-editor {
+          min-height: 260px;
+          font-size: 16px;
+          line-height: 1.75;
+          padding-bottom: 2.5rem;
+        }
+        .rt-card:focus-within .ql-toolbar,
+        .rt-card:focus-within .ql-container {
+          border-color: #93c5fd !important;
+          box-shadow: 0 0 0 4px rgba(59,130,246,.15);
+        }
+      `}</style>
+
+      <div className="min-h-screen px-4 py-8 max-w-6xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">Create Book</h1>
+          <p className="text-sm text-gray-500 mt-1">Fill the details and upload files below.</p>
+        </div>
+
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* LEFT COLUMN */}
           <div className="space-y-6">
-            <div className="border rounded-md p-6 space-y-4">
-              <h2 className="text-lg font-semibold">Book Info</h2>
-
-              <Label htmlFor="coverImage" required>Cover Image</Label>
-              <FileUpload
-                type="image"
-                onChange={(e) => handleFileChange(e, "coverImage")}
-                progress={0}
-                showSuccessMessage={false}
-                required
-              />
-              {errors.coverImage && <p className="text-red-500 text-sm">{errors.coverImage}</p>}
-
-              <Label htmlFor="attachment">Upload PDF</Label>
-              <FileUpload
-                type="pdf"
-                onChange={(e) => handleFileChange(e, "attachment")}
-                progress={uploadProgress}
-                showSuccessMessage={showSuccessMessage}
-              />
-
-              <Label htmlFor="title" required>Book Title</Label>
-              <Input
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                required
-              />
-              {errors.title && <p className="text-red-500 text-sm">{errors.title}</p>}
-
-              <Label htmlFor="isbn">ISBN</Label>
-              <Input
-                id="isbn"
-                name="isbn"
-                value={formData.isbn}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="border rounded-md p-6">
-              <Label htmlFor="description">Book Description</Label>
-              <ReactQuill
-                theme="snow"
-                value={formData.description}
-                onChange={(value) => setFormData({ ...formData, description: value })}
-                modules={modules}
-                formats={formats}
-                className="bg-white border rounded-lg min-h-[136px] text-left"
-                style={{ direction: 'ltr', textAlign: 'left' }}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="border rounded-md p-6 space-y-4">
-              <Label htmlFor="author" required>Author</Label>
-              <Input
-                id="author"
-                name="author"
-                value={formData.author}
-                onChange={handleChange}
-                required
-              />
-              {errors.author && <p className="text-red-500 text-sm">{errors.author}</p>}
-
-              <Label htmlFor="translator">Translator</Label>
-              <Select
-                name="translator"
-                value={formData.translator}
-                onChange={handleChange}
-              >
-                <option value="">Select translator</option>
-                {translators.map((t) => (
-                  <option key={t._id} value={t.name}>{t.name}</option>
-                ))}
-              </Select>
-
-              <Label htmlFor="language" required>Language</Label>
-              <Select
-                name="language"
-                value={formData.language}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Select language</option>
-                {languages.map((lang) => (
-                  <option key={lang._id} value={lang.language}>{lang.language}</option>
-                ))}
-              </Select>
-              {errors.language && <p className="text-red-500 text-sm">{errors.language}</p>}
-
-              <Label htmlFor="bookDate">Publication Date</Label>
-              <div className="relative">
-                <DatePicker
-                  selected={formData.bookDate}
-                  onChange={(date) => setFormData({ ...formData, bookDate: date })}
-                  dateFormat="yyyy-MM-dd"
-                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                  placeholderText="Select date"
-                  maxDate={new Date()}
-                  isClearable
-                />
-                <CalendarIcon className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
+            {/* Book Info Card */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold">Book Info</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Basic metadata and files.</p>
               </div>
 
-              <Label htmlFor="status">Status</Label>
-              <Select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-              >
-                <option value="">Select status</option>
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
-              </Select>
+              <div>
+                <Label htmlFor="coverImage" required hint="PNG/JPG up to 5MB.">
+                  Cover Image
+                </Label>
+                <FileUpload
+                  type="image"
+                  onChange={(e) => handleFileChange(e, "coverImage")}
+                  onRemove={handleRemoveCoverImage}  // NEW: clears parent state
+                  progress={0}
+                  showSuccessMessage={false}
+                  required
+                />
+                {errors.coverImage && (
+                  <p className="text-red-500 text-xs mt-1">{errors.coverImage}</p>
+                )}
+              </div>
 
-              <Label htmlFor="category">Category</Label>
-              <Input
-                id="category"
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-              />
+              <div>
+                <Label htmlFor="attachment" hint="Optional. PDF up to 10MB.">
+                  Upload PDF
+                </Label>
+                <FileUpload
+                  type="pdf"
+                  onChange={(e) => handleFileChange(e, "attachment")}
+                  progress={uploadProgress}
+                  showSuccessMessage={showSuccessMessage}
+                />
+              </div>
 
-              <Label htmlFor="isPublished">Publish?</Label>
-              <Select
-                name="isPublished"
-                value={formData.isPublished}
-                onChange={handleChange}
-              >
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </Select>
+              <div>
+                <Label htmlFor="title" required>
+                  Book Title
+                </Label>
+                <Input
+                  id="title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                  required
+                />
+                {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="isbn">ISBN</Label>
+                  <Input id="isbn" name="isbn" value={formData.isbn} onChange={handleChange} />
+                </div>
+                <div>
+                  <Label htmlFor="category">Category</Label>
+                  <Input
+                    id="category"
+                    name="category"
+                    value={formData.category}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Description Card */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+              <Label htmlFor="description" hint="Use the toolbar to format the content.">
+                Book Description
+              </Label>
+              <div className="rt-card">
+                <ReactQuill
+                  theme="snow"
+                  value={formData.description}
+                  onChange={(value) => setFormData({ ...formData, description: value })}
+                  modules={modules}
+                  formats={formats}
+                  className="bg-white"
+                />
+              </div>
             </div>
           </div>
 
+          {/* RIGHT COLUMN */}
+          <div className="space-y-6">
+            {/* People / Language Card */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold">People & Language</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Who wrote it and in which language.</p>
+              </div>
+
+              <div>
+                <Label htmlFor="author" required>
+                  Author
+                </Label>
+                <Input
+                  id="author"
+                  name="author"
+                  value={formData.author}
+                  onChange={handleChange}
+                  required
+                />
+                {errors.author && <p className="text-red-500 text-xs mt-1">{errors.author}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="translator">Translator</Label>
+                <Select name="translator" value={formData.translator} onChange={handleChange}>
+                  <option value="">Select translator</option>
+                  {translators.map((t) => (
+                    <option key={t._id} value={t.name}>
+                      {t.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="language" required>
+                  Language
+                </Label>
+                <Select
+                  name="language"
+                  value={formData.language}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select language</option>
+                  {languages.map((lang) => (
+                    <option key={lang._id} value={lang.language}>
+                      {lang.language}
+                    </option>
+                  ))}
+                </Select>
+                {errors.language && (
+                  <p className="text-red-500 text-xs mt-1">{errors.language}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Publishing Card */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold">Publishing</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Status, date, and visibility.</p>
+              </div>
+
+              <div>
+                <Label htmlFor="bookDate">Publication Date</Label>
+                <div className="relative">
+                  <DatePicker
+                    selected={formData.bookDate}
+                    onChange={(date) => setFormData({ ...formData, bookDate: date })}
+                    dateFormat="yyyy-MM-dd"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white outline-none shadow-sm focus:ring-2 focus:ring-blue-300"
+                    placeholderText="Select date"
+                    maxDate={new Date()}
+                    isClearable
+                  />
+                  <CalendarIcon className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select name="status" value={formData.status} onChange={handleChange}>
+                    <option value="">Select status</option>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="isPublished">Publish?</Label>
+                  <Select
+                    name="isPublished"
+                    value={formData.isPublished}
+                    onChange={handleChange}
+                  >
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
           <div className="col-span-1 md:col-span-2 flex justify-end">
             <button
               type="submit"
-              className="px-6 py-2 rounded-md bg-[#5a6c17] hover:bg-[rgba(90,108,23,0.83)] text-white disabled:bg-blue-400 transition-colors"
+              className="px-6 py-3 rounded-xl bg-[#5a6c17] hover:bg-[rgba(90,108,23,0.9)] text-white font-semibold shadow-sm disabled:opacity-60"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Creating...
                 </span>
-              ) : "Create Book"}
+              ) : (
+                "Create Book"
+              )}
             </button>
           </div>
         </form>
