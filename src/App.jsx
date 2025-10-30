@@ -74,7 +74,9 @@ const App = () => {
 
           <Route path="/contact" element={<ContactList />} />
           <Route path="/gallery" element={<GalleryList />} />
+          
           <Route path="/creategallery" element={<CreateGallery />} />
+          <Route path="/gallery/:id/edit" element={<CreateGallery />} />
           <Route path="/writers" element={<WriterManagement />} />
           <Route path="/writers/:id" element={<WriterDetail />} />
           <Route path="/writers-update/:id" element={<WriterUpdateForm />} />

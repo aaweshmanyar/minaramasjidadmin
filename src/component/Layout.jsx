@@ -30,7 +30,7 @@ const sidebarLinks = [
   { label: "Translators", icon: FaLanguage, path: "/translator", roles: ["superadmin"] },
   { label: "Languages", icon: FaLanguage, path: "/languages", roles: ["superadmin"] },
   { label: "Topics", icon: FaBookmark, path: "/topic", roles: ["superadmin", "admin"] },
-   { label: "Topics and Tags", icon: FaBookmark, path: "/topictagslist", roles: ["superadmin", "admin"] },
+   { label: "Gallery", icon: FaBookmark, path: "/gallery", roles: ["superadmin", "admin"] },
   { label: "Articles", icon: FaNewspaper, path: "/viewarticle", roles: ["admin", "superadmin"] },
   { label: "Events", icon: FaCalendarDays, path: "/event", roles: ["superadmin", "admin"] },
   { label: "Questions List", icon: FaCircleQuestion, path: "/questionlist", roles: ["superadmin", "admin"] },
