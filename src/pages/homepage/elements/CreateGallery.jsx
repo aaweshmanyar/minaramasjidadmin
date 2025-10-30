@@ -8,7 +8,7 @@ import Swal from "sweetalert2";
 import { CornerUpLeft, ImagePlus } from "lucide-react";
 
 // --- LOCAL API for testing ---
-const API_BASE_URL = "http://api.minaramasjid.com/";
+const API_BASE_URL = "https://api.minaramasjid.com";
 
 const quillModules = {
   toolbar: [

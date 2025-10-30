@@ -14,7 +14,7 @@ import { useNavigate } from "react-router-dom";
 
 // ✅ Use localhost backend
 
-const API_BASE_URL = "http://api.minaramasjid.com";
+const API_BASE_URL = "https://api.minaramasjid.com";
 
 export default function GalleryList() {
   const navigate = useNavigate();
