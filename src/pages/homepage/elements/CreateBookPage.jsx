@@ -418,7 +418,7 @@ export default function CreateBookPage() {
     if (formData.attachment) payload.append("attachment", formData.attachment);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/books`, {
+      const response = await fetch(`https://minaramasjid-backend.onrender.com/api/books`, {
         method: "POST",
         body: payload,
       });
