@@ -58,7 +58,7 @@ const TopicUpdateForm = () => {
     const fetchTopic = async () => {
       try {
         const res = await axios.get(
-          `https://api.minaramasjid.com/api/topics/${id}`
+          `https://minaramasjid-backend.onrender.com/api/topics/${id}`
         );
         const data = res.data || {};
 
@@ -66,7 +66,7 @@ const TopicUpdateForm = () => {
         setAbout(data.about || "");
 
         // Load current server image for preview, cache-busted
-        const serverImgUrl = `https://api.minaramasjid.com/api/topics/image/${id}?ts=${Date.now()}`;
+        const serverImgUrl = `https://minaramasjid-backend.onrender.com/api/topics/image/${id}?ts=${Date.now()}`;
 
         const img = new Image();
         img.onload = () => setImagePreview(serverImgUrl);
@@ -129,7 +129,7 @@ const TopicUpdateForm = () => {
       });
 
       await axios.put(
-        `https://api.minaramasjid.com/api/topics/${id}`,
+        `https://minaramasjid-backend.onrender.com/api/topics/${id}`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );

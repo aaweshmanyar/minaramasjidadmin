@@ -94,7 +94,7 @@ export default function EditWriterForm() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`https://api.minaramasjid.com/api/writers/${id}`);
+        const res = await fetch(`https://minaramasjid-backend.onrender.com/api/writers/${id}`);
         if (!res.ok) throw new Error("Failed to load writer data");
         const data = await res.json();
 
@@ -114,7 +114,7 @@ export default function EditWriterForm() {
         // Prefer direct URL if API provides one; otherwise fallback to image endpoint
         setPreview(
           data?.imageUrl ||
-            `https://api.minaramasjid.com/api/writers/image/${id}`
+            `https://minaramasjid-backend.onrender.com/api/writers/image/${id}`
         );
       } catch (err) {
         Swal.fire("Error", err.message || "Failed to load writer", "error");
@@ -198,7 +198,7 @@ export default function EditWriterForm() {
       // If you want to explicitly clear an existing photo when user removed preview:
       if (!profilePic && preview === null) payload.append("removeImage", "true");
 
-      const res = await fetch(`https://api.minaramasjid.com/api/writers/${id}`, {
+      const res = await fetch(`https://minaramasjid-backend.onrender.com/api/writers/${id}`, {
         method: "PUT",
         body: payload,
       });

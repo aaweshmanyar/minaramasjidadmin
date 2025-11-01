@@ -163,7 +163,7 @@ export default function EditQuestionForm() {
     (async () => {
       try {
         Swal.fire({ title: "Loading…", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const { data } = await axios.get(`https://api.minaramasjid.com/api/questions/${id}`);
+        const { data } = await axios.get(`https://minaramasjid-backend.onrender.com/api/questions/${id}`);
 
         // Meta
         setSlug(data.slug || "");
@@ -194,7 +194,7 @@ export default function EditQuestionForm() {
         setAnswerHindi(data.answerHindi || "");
 
         // Image
-        setServerImageURL(`https://api.minaramasjid.com/api/questions/image/${id}`);
+        setServerImageURL(`https://minaramasjid-backend.onrender.com/api/questions/image/${id}`);
       } catch (e) {
         console.error(e);
         Swal.fire("Error", "Failed to load question.", "error");
@@ -243,7 +243,7 @@ export default function EditQuestionForm() {
     setPreviewURL(null);
     if (fileRef.current) fileRef.current.value = "";
     // restore server image if it exists
-    setServerImageURL(`https://api.minaramasjid.com/api/questions/image/${id}`);
+    setServerImageURL(`https://minaramasjid-backend.onrender.com/api/questions/image/${id}`);
   };
 
   /* ---------- Submit update ---------- */
@@ -297,7 +297,7 @@ export default function EditQuestionForm() {
         didOpen: () => Swal.showLoading(),
       });
 
-      await axios.patch(`https://api.minaramasjid.com/api/questions/${id}`, fd, {
+      await axios.patch(`https://minaramasjid-backend.onrender.com/api/questions/${id}`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

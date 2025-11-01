@@ -161,7 +161,7 @@ export default function CreateOrEditEvent() {
     (async () => {
       try {
         Swal.fire({ title: "Loading event…", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const { data } = await axios.get(`https://api.minaramasjid.com/api/events/${id}`);
+        const { data } = await axios.get(`https://minaramasjid-backend.onrender.com/api/events/${id}`);
 
         // basic
         setEventTitle(data.title || "");
@@ -193,7 +193,7 @@ export default function CreateOrEditEvent() {
         setHindiDescription(data.hindiDescription || "");
 
         // server image preview
-        setServerImageURL(`https://api.minaramasjid.com/api/events/image/${id}`);
+        setServerImageURL(`https://minaramasjid-backend.onrender.com/api/events/image/${id}`);
       } catch (err) {
         console.error(err);
         Swal.fire("Error", "Failed to load event data.", "error");
@@ -232,7 +232,7 @@ export default function CreateOrEditEvent() {
     if (fileInputRef.current) fileInputRef.current.value = "";
     // if editing and they clear the NEW image, show server image again (if any)
     if (isEdit) {
-      setServerImageURL(`https://api.minaramasjid.com/api/events/image/${id}`);
+      setServerImageURL(`https://minaramasjid-backend.onrender.com/api/events/image/${id}`);
     }
   };
 
@@ -303,8 +303,8 @@ export default function CreateOrEditEvent() {
       }
 
       const url = isEdit
-        ? `https://api.minaramasjid.com/api/events/${id}`
-        : `https://api.minaramasjid.com/api/events`;
+        ? `https://minaramasjid-backend.onrender.com/api/events/${id}`
+        : `https://minaramasjid-backend.onrender.com/api/events`;
 
       const method = isEdit ? "patch" : "post";
 

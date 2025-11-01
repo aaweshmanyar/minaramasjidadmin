@@ -16,7 +16,7 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 
-const API_BASE_URL = "https://api.minaramasjid.com/api";
+const API_BASE_URL = "https://minaramasjid-backend.onrender.com/api";
 
 export default function EventList() {
   const navigate = useNavigate();
