@@ -157,7 +157,6 @@ const FileUpload = ({
       if (type === "image") {
         if (!file.type.match("image.*")) {
           alert("Please select an image file");
-          // reset input
           if (inputRef.current) inputRef.current.value = "";
           setFileSelected(false);
           setFileName("");
@@ -179,14 +178,11 @@ const FileUpload = ({
 
   const handleRemoveImage = (e) => {
     e.stopPropagation();
-    // clear local
     setFileSelected(false);
     setPreviewUrl(null);
     setFileName("");
     setFileSize(0);
-    // clear input element
     if (inputRef.current) inputRef.current.value = "";
-    // notify parent to clear state
     if (onRemove) onRemove();
   };
 
@@ -195,7 +191,7 @@ const FileUpload = ({
     if (s < 1024) return `${s} B`;
     if (s < 1024 * 1024) return `${(s / 1024).toFixed(1)} KB`;
     return `${(s / (1024 * 1024)).toFixed(2)} MB`;
-    }
+  };
 
   return (
     <div>
@@ -217,7 +213,7 @@ const FileUpload = ({
               {type === "image" ? "Select cover image" : "Select PDF file"}
             </div>
             <div className="text-xs text-gray-500">
-              {type === "image" ? "PNG/JPG up to 5MB" : "PDF up to 10MB"}
+              {type === "image" ? "PNG/JPG up to 5MB" : "PDF up to 200MB"}
             </div>
           </div>
           <span className="text-xs px-2 py-1 rounded-lg bg-gray-100 text-gray-700">Browse</span>
@@ -278,6 +274,8 @@ const FileUpload = ({
 };
 
 export default function CreateBookPage() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -299,7 +297,6 @@ export default function CreateBookPage() {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
-  const navigate = useNavigate();
 
   /* ---------- Fetch lists ---------- */
   useEffect(() => {
@@ -343,8 +340,8 @@ export default function CreateBookPage() {
     const file = e.target.files[0];
     if (!file) return;
 
-    // size: 5MB image, 10MB pdf
-    const maxSize = field === "coverImage" ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
+    // size: 5MB image, 200MB pdf
+    const maxSize = field === "coverImage" ? 5 * 1024 * 1024 : 200 * 1024 * 1024;
     if (file.size > maxSize) {
       alert(`File size should be less than ${maxSize / (1024 * 1024)}MB`);
       e.target.value = "";
@@ -501,9 +498,15 @@ export default function CreateBookPage() {
       `}</style>
 
       <div className="min-h-screen px-4 py-8 max-w-6xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Create Book</h1>
-          <p className="text-sm text-gray-500 mt-1">Fill the details and upload files below.</p>
+        {/* Header + Back button */}
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Create Book</h1>
+            <p className="text-sm text-gray-500 mt-1">Fill the details and upload files below.</p>
+          </div>
+          <Button variant="outline" onClick={() => navigate("/booklist")}>
+            ← Back to list
+          </Button>
         </div>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -534,7 +537,7 @@ export default function CreateBookPage() {
               </div>
 
               <div>
-                <Label htmlFor="attachment" hint="Optional. PDF up to 10MB.">
+                <Label htmlFor="attachment" hint="Optional. PDF up to 200MB.">
                   Upload PDF
                 </Label>
                 <FileUpload

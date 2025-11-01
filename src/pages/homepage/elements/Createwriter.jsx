@@ -149,7 +149,7 @@ export default function CreateWriterForm() {
       payload.append("isTeamMember", isTeamMember ? "true" : "false");
       if (profilePic) payload.append("image", profilePic);
 
-      const res = await fetch(`${API_BASE_URL}/api/writers`, { method: "POST", body: payload });
+      const res = await fetch(`http://localhost:5000/api/writers`, { method: "POST", body: payload });
       if (!res.ok) {
         let msg = "Failed to create writer";
         try {

@@ -231,7 +231,7 @@ export default function CreateEvent() {
       formData.append("hindiTitle", hindiTitle || "");
       formData.append("hindiDescription", hindiDescription || "");
 
-      await axios.post(`${API_BASE_URL}/api/events`, formData, {
+      await axios.post(`http://localhost:5000/api/events`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (evt) => {
           if (!evt.total) return;

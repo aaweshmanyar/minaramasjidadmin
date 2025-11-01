@@ -249,7 +249,7 @@ export default function CreateArticlePage() {
       if (selectedTranslator) formData.append("translator", selectedTranslator);
       if (selectedTag) formData.append("tags", selectedTag);
 
-      await axios.post(`${API_BASE_URL}/api/articles`, formData, {
+      await axios.post(`http://localhost:5000/api/articles`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (evt) => {
           if (!evt.total) return; // total may be undefined
