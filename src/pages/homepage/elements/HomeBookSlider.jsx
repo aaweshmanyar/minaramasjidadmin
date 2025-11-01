@@ -72,14 +72,14 @@ const HomeBookSlider = () => {
           formData,
           { headers: { 'Content-Type': 'multipart/form-data' } }
         );
-        alert('Book updated successfully!');
+        alert('Home Book slider updated successfully!');
       } else {
         await axios.post(
           `${API_BASE_URL}/api/homebookslider`,
           formData,
           { headers: { 'Content-Type': 'multipart/form-data' } }
         );
-        alert('Book added successfully!');
+        alert('Home Book slider added successfully!');
       }
 
       fetchBooks();

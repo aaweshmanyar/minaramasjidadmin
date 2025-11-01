@@ -1,9 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Layout from "../../../component/Layout";
 import Swal from "sweetalert2";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
@@ -19,45 +16,7 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 
-const API_BASE_URL = "https://newmmdata-backend.onrender.com/api";
-
-const quillModules = {
-  toolbar: [
-    [{ font: [] }, { size: [] }],
-    ["bold", "italic", "underline", "strike"],
-    [{ color: [] }, { background: [] }],
-    [{ script: "sub" }, { script: "super" }],
-    [{ header: [1, 2, 3, 4, 5, 6, false] }],
-    [{ align: [] }],
-    ["blockquote", "code-block"],
-    [{ list: "ordered" }, { list: "bullet" }],
-    [{ indent: "-1" }, { indent: "+1" }],
-    ["link", "image", "video"],
-    ["clean"],
-  ],
-};
-
-const quillFormats = [
-  "font",
-  "size",
-  "bold",
-  "italic",
-  "underline",
-  "strike",
-  "color",
-  "background",
-  "script",
-  "header",
-  "align",
-  "blockquote",
-  "code-block",
-  "list",
-  "bullet",
-  "indent",
-  "link",
-  "image",
-  "video",
-];
+const API_BASE_URL = "https://api.minaramasjid.com/api";
 
 export default function EventList() {
   const navigate = useNavigate();
@@ -80,8 +39,6 @@ export default function EventList() {
   const [topicFilter, setTopicFilter] = useState("all");
 
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [editMode, setEditMode] = useState(false);
-  const [formData, setFormData] = useState({ title: "", content: "", image: null });
 
   const abortRef = useRef(null);
 
@@ -207,42 +164,6 @@ export default function EventList() {
   // ---------- Actions ----------
   const handleView = (event) => {
     setSelectedEvent(event);
-    setEditMode(false);
-  };
-
-  const handleEdit = (event) => {
-    setSelectedEvent(event);
-    setFormData({ title: event.title || "", content: event.content || "", image: null });
-    setEditMode(true);
-  };
-
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-
-    const form = new FormData();
-    if (formData.title) form.append("title", formData.title);
-    if (formData.content) form.append("content", formData.content);
-    if (formData.image) form.append("image", formData.image);
-
-    try {
-      Swal.fire({
-        title: "Updating...",
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
-      });
-
-      await axios.patch(`${API_BASE_URL}/events/${selectedEvent.id}`, form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      Swal.close();
-      Swal.fire("Updated!", "Event updated successfully", "success");
-      await fetchEvents(false);
-      setSelectedEvent(null);
-    } catch (error) {
-      Swal.fire("Error", "Failed to update event.", "error");
-      console.error("Update Error:", error);
-    }
   };
 
   const handleDelete = async (id) => {
@@ -372,7 +293,7 @@ export default function EventList() {
             <Eye className="w-4 h-4" /> View
           </button>
           <button
-            onClick={() => handleEdit(e)}
+            onClick={() => navigate(`/event/update-event/${e.id}`)}
             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md inline-flex items-center gap-1"
           >
             <Pencil className="w-4 h-4" /> Edit
@@ -610,7 +531,7 @@ export default function EventList() {
                               View
                             </button>
                             <button
-                              onClick={() => handleEdit(e)}
+                              onClick={() => navigate(`/event/update-event/${e.id}`)}
                               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded inline-flex items-center gap-1"
                               title="Edit"
                             >
@@ -699,7 +620,7 @@ export default function EventList() {
           </>
         )}
 
-        {/* Viewer / Editor Modal */}
+        {/* Viewer Modal (no inline edit anymore) */}
         {selectedEvent && (
           <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
             <div className="bg-white w-full max-w-2xl p-6 rounded-2xl shadow-lg relative max-h-[90vh] overflow-y-auto">
@@ -710,97 +631,46 @@ export default function EventList() {
                 ✕
               </button>
 
-              {!editMode ? (
-                <div>
-                  <h3 className="text-xl font-bold mb-4">{selectedEvent.title}</h3>
-                  <img
-                    src={`${API_BASE_URL}/events/image/${selectedEvent.id}`}
-                    alt={selectedEvent.title}
-                    className="w-full max-h-64 object-contain mb-4 rounded border"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                  <div
-                    className="prose max-w-none border p-4 bg-gray-50 rounded"
-                    dangerouslySetInnerHTML={{ __html: selectedEvent.content }}
-                  />
-                  <div className="mt-4 text-sm text-gray-500 space-y-1">
-                    <p>Event Date: {formatDate(selectedEvent.eventDate)}</p>
-                    {selectedEvent.topic && <p>Topic: {selectedEvent.topic}</p>}
-                    {selectedEvent.language && <p>Language: {selectedEvent.language}</p>}
-                    {selectedEvent.tags && <p>Tags: {selectedEvent.tags}</p>}
-                    {selectedEvent.writers && <p>Writer: {selectedEvent.writers}</p>}
-                    {selectedEvent.translator && <p>Translator: {selectedEvent.translator}</p>}
-                  </div>
-
-                  <div className="mt-5 flex gap-2 justify-end">
-                    <button
-                      onClick={() => handleEdit(selectedEvent)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-2"
-                    >
-                      <Pencil className="w-4 h-4" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(selectedEvent.id)}
-                      className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 inline-flex items-center gap-2"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Delete
-                    </button>
-                  </div>
+              <div>
+                <h3 className="text-xl font-bold mb-4">{selectedEvent.title}</h3>
+                <img
+                  src={`${API_BASE_URL}/events/image/${selectedEvent.id}`}
+                  alt={selectedEvent.title}
+                  className="w-full max-h-64 object-contain mb-4 rounded border"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+                <div
+                  className="prose max-w-none border p-4 bg-gray-50 rounded"
+                  dangerouslySetInnerHTML={{ __html: selectedEvent.content }}
+                />
+                <div className="mt-4 text-sm text-gray-500 space-y-1">
+                  <p>Event Date: {formatDate(selectedEvent.eventDate)}</p>
+                  {selectedEvent.topic && <p>Topic: {selectedEvent.topic}</p>}
+                  {selectedEvent.language && <p>Language: {selectedEvent.language}</p>}
+                  {selectedEvent.tags && <p>Tags: {selectedEvent.tags}</p>}
+                  {selectedEvent.writers && <p>Writer: {selectedEvent.writers}</p>}
+                  {selectedEvent.translator && <p>Translator: {selectedEvent.translator}</p>}
                 </div>
-              ) : (
-                <form onSubmit={handleUpdate} className="space-y-4">
-                  <label className="block">
-                    <span className="text-gray-700">Title</span>
-                    <input
-                      type="text"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
-                      required
-                    />
-                  </label>
 
-                  <label className="block">
-                    <span className="text-gray-700">Content</span>
-                    <ReactQuill
-                      value={formData.content}
-                      onChange={(value) => setFormData({ ...formData, content: value })}
-                      theme="snow"
-                      modules={quillModules}
-                      formats={quillFormats}
-                      className="bg-white border rounded-lg min-h-[200px]"
-                      style={{ direction: "ltr", textAlign: "left" }}
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="text-gray-700">Replace Image (optional)</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="mt-1 block w-full text-sm text-gray-700"
-                      onChange={(e) => setFormData({ ...formData, image: e.target.files?.[0] || null })}
-                    />
-                  </label>
-
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedEvent(null)}
-                      className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-100"
-                    >
-                      Cancel
-                    </button>
-                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                      Save Changes
-                    </button>
-                  </div>
-                </form>
-              )}
+                <div className="mt-5 flex gap-2 justify-end">
+                  <button
+                    onClick={() => navigate(`/event/update-event/${selectedEvent.id}`)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-2"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(selectedEvent.id)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 inline-flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

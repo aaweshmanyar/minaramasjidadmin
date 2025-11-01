@@ -237,7 +237,7 @@ export default function CreateQuestionsForm() {
     });
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/questions`, formData, {
+      const response = await axios.post(`https://api.minaramasjid.com/api/questions`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

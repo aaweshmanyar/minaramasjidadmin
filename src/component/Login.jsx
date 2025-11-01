@@ -127,7 +127,7 @@ const Login = () => {
         <input
           type="submit"
           value="Log In"
-          className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition duration-200"
+          className="cursor-pointer w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition duration-200"
         />
       </form>
     </div>
