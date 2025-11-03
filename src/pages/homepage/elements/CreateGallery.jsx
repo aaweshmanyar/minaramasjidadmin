@@ -5,10 +5,10 @@ import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import axios from "axios";
 import Swal from "sweetalert2";
-import { CornerUpLeft, ImagePlus } from "lucide-react";
+import { CornerUpLeft, ImagePlus, Trash2 } from "lucide-react";
 
-// --- LOCAL API for testing ---
-const API_BASE_URL = "https://api.minaramasjid.com";
+// Backend base URL
+const API_BASE_URL = "https://minaramasjid-backend.onrender.com";
 
 const quillModules = {
   toolbar: [
@@ -21,27 +21,27 @@ const quillModules = {
 
 export default function CreateGallery() {
   const navigate = useNavigate();
-  const { id } = useParams(); // detect if editing
+  const { id } = useParams(); // gallery ID when editing (from "galleries" table)
   const isEdit = Boolean(id);
 
-  // States
+  // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [eventDate, setEventDate] = useState("");
-  const [files, setFiles] = useState([]);
-  const [existingImages, setExistingImages] = useState([]); // existing gallery images
+  const [files, setFiles] = useState([]); // new files to upload
+  const [existingImages, setExistingImages] = useState([]); // images already in DB (gallery_images rows)
   const [loading, setLoading] = useState(false);
+
   const inputRef = useRef(null);
 
-  // File info summary
+  // Friendly file count
   const filesInfo = useMemo(() => {
-    if (!files.length && !existingImages.length)
-      return "No files uploaded yet.";
+    if (!files.length && !existingImages.length) return "No files uploaded yet.";
     const total = files.length + existingImages.length;
     return `${total} file${total > 1 ? "s" : ""} selected/attached.`;
   }, [files, existingImages]);
 
-  // Pick files
+  // ------- File picking & drag/drop -------
   const onPickFiles = (e) => {
     const picked = Array.from(e.target.files || []);
     addFiles(picked);
@@ -52,7 +52,6 @@ export default function CreateGallery() {
     setFiles(combined);
   };
 
-  // Drag-drop handlers
   const onDrop = (e) => {
     e.preventDefault();
     const dropped = Array.from(e.dataTransfer.files || []).filter((f) =>
@@ -62,35 +61,51 @@ export default function CreateGallery() {
   };
   const onDragOver = (e) => e.preventDefault();
 
-  // Remove a newly added image
+  // Remove a newly added (not yet uploaded) file
   const removeAt = (idx) => {
     const clone = [...files];
     clone.splice(idx, 1);
     setFiles(clone);
   };
 
-  // Remove an existing DB image (for edit)
-  const removeExisting = (imgId) => {
-    setExistingImages(existingImages.filter((img) => img.id !== imgId));
+  // Remove an existing DB image immediately (calls API)
+  const removeExisting = async (imageId) => {
+    const confirm = await Swal.fire({
+      title: "Remove this image?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, remove",
+      cancelButtonText: "Cancel",
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      await axios.delete(`${API_BASE_URL}/api/galleries/image/${imageId}`);
+      setExistingImages((prev) => prev.filter((img) => img.id !== imageId));
+      Swal.fire({ icon: "success", title: "Image removed", timer: 900, showConfirmButton: false });
+    } catch (e) {
+      console.error(e);
+      Swal.fire("Error", e.response?.data?.message || "Failed to remove image.", "error");
+    }
   };
 
-  // Fetch existing gallery when editing
+  // ------- Prefill when editing -------
   useEffect(() => {
     if (!isEdit) return;
     const fetchGallery = async () => {
       try {
         setLoading(true);
         const { data } = await axios.get(`${API_BASE_URL}/api/galleries/${id}`);
+        // data: { id, title, description, eventDate, images: [{id,imageName,imageType,sort_order,...}] }
         if (!data) {
           Swal.fire("Error", "Gallery not found.", "error");
           navigate("/gallery");
           return;
         }
-
         setTitle(data.title || "");
         setDescription(data.description || "");
         setEventDate(data.eventDate || "");
-        setExistingImages(data.images || []); // backend should send image URLs or IDs
+        setExistingImages(Array.isArray(data.images) ? data.images : []);
       } catch (err) {
         console.error(err);
         Swal.fire("Error", "Failed to load gallery.", "error");
@@ -101,29 +116,21 @@ export default function CreateGallery() {
     fetchGallery();
   }, [id, isEdit, navigate]);
 
-  // Validation before submit
+  // ------- Validation -------
   const validate = () => {
     if (!title.trim()) return "Gallery Title is required.";
     if (!eventDate) return "Event Date is required.";
-    if (!isEdit && !files.length)
-      return "Please add at least one image (max 50).";
+    if (!isEdit && !files.length) return "Please add at least one image (max 50).";
     return null;
   };
 
-  // Submit handler
+  // ------- Submit -------
   const submit = async () => {
     const err = validate();
     if (err) {
       Swal.fire("Missing fields", err, "warning");
       return;
     }
-
-    // Prepare form data
-    const fd = new FormData();
-    fd.append("title", title.trim());
-    fd.append("description", description || "");
-    fd.append("date", eventDate);
-    files.forEach((f) => fd.append("images", f));
 
     Swal.fire({
       title: isEdit ? "Updating Gallery..." : "Creating Gallery...",
@@ -133,10 +140,22 @@ export default function CreateGallery() {
 
     try {
       if (isEdit) {
-        // Update
-        await axios.put(`${API_BASE_URL}/api/galleries/${id}`, fd, {
-          headers: { "Content-Type": "multipart/form-data" },
+        // 1) Update meta (JSON)
+        await axios.put(`${API_BASE_URL}/api/galleries/${id}`, {
+          title: title.trim(),
+          description: description || "",
+          date: eventDate,
         });
+
+        // 2) If there are new files, upload them
+        if (files.length) {
+          const fd = new FormData();
+          files.forEach((f) => fd.append("images", f));
+          await axios.post(`${API_BASE_URL}/api/galleries/${id}/images`, fd, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        }
+
         Swal.fire({
           icon: "success",
           title: "Gallery updated successfully!",
@@ -144,10 +163,17 @@ export default function CreateGallery() {
           showConfirmButton: false,
         }).then(() => navigate("/gallery"));
       } else {
-        // Create new
+        // Create new (meta + images together)
+        const fd = new FormData();
+        fd.append("title", title.trim());
+        fd.append("description", description || "");
+        fd.append("date", eventDate);
+        files.forEach((f) => fd.append("images", f));
+
         await axios.post(`${API_BASE_URL}/api/galleries`, fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
+
         Swal.fire({
           icon: "success",
           title: "Gallery created successfully!",
@@ -160,9 +186,7 @@ export default function CreateGallery() {
       Swal.fire(
         "Error",
         e.response?.data?.message ||
-          (isEdit
-            ? "Failed to update gallery."
-            : "Failed to create gallery."),
+          (isEdit ? "Failed to update gallery." : "Failed to create gallery."),
         "error"
       );
     }
@@ -171,9 +195,7 @@ export default function CreateGallery() {
   if (loading) {
     return (
       <Layout>
-        <div className="text-center py-16 text-gray-500 text-lg">
-          Loading gallery data...
-        </div>
+        <div className="text-center py-16 text-gray-500 text-lg">Loading gallery data...</div>
       </Layout>
     );
   }
@@ -213,9 +235,7 @@ export default function CreateGallery() {
 
           {/* Description */}
           <div className="mb-5">
-            <label className="block text-sm font-medium mb-1">
-              Gallery Description
-            </label>
+            <label className="block text-sm font-medium mb-1">Gallery Description</label>
             <div className="rounded-xl overflow-hidden border">
               <ReactQuill
                 value={description}
@@ -239,12 +259,10 @@ export default function CreateGallery() {
             />
           </div>
 
-          {/* Existing Images */}
+          {/* Existing Images (edit mode) */}
           {isEdit && existingImages.length > 0 && (
             <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">
-                Existing Images
-              </label>
+              <label className="block text-sm font-medium mb-2">Existing Images</label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {existingImages.map((img) => (
                   <div
@@ -253,13 +271,16 @@ export default function CreateGallery() {
                   >
                     <img
                       src={`${API_BASE_URL}/api/galleries/image/${img.id}`}
-                      alt={img.imageName}
+                      alt={img.imageName || "gallery image"}
                       className="w-full h-32 object-cover"
                     />
                     <button
+                      type="button"
                       onClick={() => removeExisting(img.id)}
-                      className="absolute top-1 right-1 bg-black/50 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition"
+                      className="absolute top-1 right-1 bg-black/60 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1"
+                      title="Remove image"
                     >
+                      <Trash2 className="w-3 h-3" />
                       Remove
                     </button>
                   </div>
@@ -303,13 +324,11 @@ export default function CreateGallery() {
             </div>
 
             {/* File Info */}
-            <div className="text-center text-sm text-gray-500 mt-3">
-              {filesInfo}
-            </div>
+            <div className="text-center text-sm text-gray-500 mt-3">{filesInfo}</div>
 
-            {/* New File Previews */}
+            {/* New File List */}
             {!!files.length && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
                 {files.map((f, i) => (
                   <div
                     key={`${f.name}-${i}`}
