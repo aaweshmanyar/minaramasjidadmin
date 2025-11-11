@@ -10,6 +10,37 @@ import Swal from "sweetalert2";
 import Quill from "quill";
 import API_BASE_URL from "../../../../config";
 
+// ---------- NEW: preset images ----------
+import img1 from "../../../assets/Images/img1.jpg";
+import img2 from "../../../assets/Images/img2.jpg";
+import img3 from "../../../assets/Images/img3.jpg";
+import img4 from "../../../assets/Images/img4.jpg";
+import img5 from "../../../assets/Images/img5.jpg";
+import img6 from "../../../assets/Images/img6.jpg";
+import img7 from "../../../assets/Images/img7.jpg";
+import img8 from "../../../assets/Images/img8.jpg";
+import img9 from "../../../assets/Images/img9.jpg";
+
+const PRESET_IMAGES = [
+  { id: "img1", src: img1, label: "img1" },
+  { id: "img2", src: img2, label: "img2" },
+  { id: "img3", src: img3, label: "img3" },
+  { id: "img4", src: img4, label: "img4" },
+  { id: "img5", src: img5, label: "img5" },
+  { id: "img6", src: img6, label: "img6" },
+  { id: "img7", src: img7, label: "img7" },
+  { id: "img8", src: img8, label: "img8" },
+  { id: "img9", src: img9, label: "img9" },
+];
+
+// Convert a bundled image URL into a File so backend receives it like an upload
+async function blobFromUrl(url) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  const ext = (url.split(".").pop() || "jpg").split("?")[0].toLowerCase();
+  return new File([blob], `preset.${ext}`, { type: blob.type || "image/jpeg" });
+}
+
 /* ---------- Quill Fonts ---------- */
 const Font = Quill.import("formats/font");
 Font.whitelist = [
@@ -120,7 +151,7 @@ const Label = ({ htmlFor, children, required = false, hint }) => (
   </div>
 );
 
-const Select = ({ value, onChange, name, children, required = false }) => (
+const SelectEl = ({ value, onChange, name, children, required = false }) => (
   <select
     name={name}
     value={value}
@@ -136,7 +167,7 @@ const Select = ({ value, onChange, name, children, required = false }) => (
 const FileUpload = ({
   type,
   onChange,
-  onRemove,           // NEW: parent clear callback (used for image)
+  onRemove,           // used for image
   progress,
   showSuccessMessage,
   required = false,
@@ -208,7 +239,7 @@ const FileUpload = ({
             onChange={handleFileChange}
             required={required}
           />
-          <div className="flex-1">
+        <div className="flex-1">
             <div className="text-sm font-medium">
               {type === "image" ? "Select cover image" : "Select PDF file"}
             </div>
@@ -258,9 +289,7 @@ const FileUpload = ({
                   style={{ width: `${progress}%`, transition: "width 0.4s ease" }}
                 />
               </div>
-              <div className="text-center mt-1 text-sm text-gray-600">{`${Math.round(
-                progress
-              )}%`}</div>
+              <div className="text-center mt-1 text-sm text-gray-600">{`${Math.round(progress)}%`}</div>
             </div>
           )}
 
@@ -286,10 +315,13 @@ export default function CreateBookPage() {
     status: "",
     category: "",
     isbn: "",
-    coverImage: null,
+    coverImage: null,   // manual upload (File)
     attachment: null,
     isPublished: "true",
   });
+
+  // NEW: selected preset (default img1)
+  const [selectedPresetIndex, setSelectedPresetIndex] = useState(0);
 
   const [languages, setLanguages] = useState([]);
   const [translators, setTranslators] = useState([]);
@@ -329,8 +361,7 @@ export default function CreateBookPage() {
     if (!formData.title.trim()) newErrors.title = "Title is required";
     if (!formData.author.trim()) newErrors.author = "Author is required";
     if (!formData.language) newErrors.language = "Language is required";
-    if (!formData.coverImage) newErrors.coverImage = "Cover image is required";
-
+    // NOTE: coverImage no longer required here, because preset will be used if none uploaded.
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -340,7 +371,6 @@ export default function CreateBookPage() {
     const file = e.target.files[0];
     if (!file) return;
 
-    // size: 5MB image, 200MB pdf
     const maxSize = field === "coverImage" ? 5 * 1024 * 1024 : 200 * 1024 * 1024;
     if (file.size > maxSize) {
       alert(`File size should be less than ${maxSize / (1024 * 1024)}MB`);
@@ -352,10 +382,15 @@ export default function CreateBookPage() {
       return;
     }
 
-    setFormData({ ...formData, [field]: file });
+    setFormData((prev) => ({ ...prev, [field]: file }));
     setErrors((prev) => ({ ...prev, [field]: null }));
 
-    // keep your existing simulated progress for PDFs
+    // If user manually uploads cover image, it overrides preset selection
+    if (field === "coverImage") {
+      setSelectedPresetIndex(null);
+    }
+
+    // Simulated progress for PDFs
     if (field === "attachment") {
       let uploaded = 0;
       const totalSize = file.size;
@@ -377,7 +412,8 @@ export default function CreateBookPage() {
 
   const handleRemoveCoverImage = () => {
     setFormData((prev) => ({ ...prev, coverImage: null }));
-    setErrors((prev) => ({ ...prev, coverImage: "Cover image is required" })); // keeps validation honest
+    // Restore to first preset if none selected
+    if (!Number.isInteger(selectedPresetIndex)) setSelectedPresetIndex(0);
   };
 
   const handleChange = (e) => {
@@ -414,10 +450,23 @@ export default function CreateBookPage() {
     payload.append("category", formData.category);
     payload.append("isPublished", formData.isPublished);
 
-    if (formData.coverImage) payload.append("coverImage", formData.coverImage);
-    if (formData.attachment) payload.append("attachment", formData.attachment);
-
     try {
+      // Cover image:
+      if (formData.coverImage) {
+        // Manual upload wins
+        payload.append("coverImage", formData.coverImage);
+      } else {
+        // Use selected preset (default to img1)
+        const idx = Number.isInteger(selectedPresetIndex) ? selectedPresetIndex : 0;
+        const preset = PRESET_IMAGES[idx] || PRESET_IMAGES[0];
+        const presetFile = await blobFromUrl(preset.src);
+        payload.append("coverImage", presetFile, `${preset.label || "preset"}.jpg`);
+        payload.append("coverPresetLabel", preset.label || `img${idx + 1}`);
+      }
+
+      // Optional attachment
+      if (formData.attachment) payload.append("attachment", formData.attachment);
+
       const response = await fetch(`https://minaramasjid-backend.onrender.com/api/books`, {
         method: "POST",
         body: payload,
@@ -454,6 +503,7 @@ export default function CreateBookPage() {
       setUploadProgress(0);
       setShowSuccessMessage(false);
       setErrors({});
+      if (!Number.isInteger(selectedPresetIndex)) setSelectedPresetIndex(0);
     } catch (error) {
       console.error("Error creating book:", error);
       Swal.fire({
@@ -465,6 +515,10 @@ export default function CreateBookPage() {
       setIsSubmitting(false);
     }
   };
+
+  // For visual preview when using a preset (FileUpload already previews manual uploads)
+  const currentPresetSrc =
+    Number.isInteger(selectedPresetIndex) ? PRESET_IMAGES[selectedPresetIndex].src : PRESET_IMAGES[0].src;
 
   /* ---------- Render ---------- */
   return (
@@ -519,23 +573,77 @@ export default function CreateBookPage() {
                 <p className="text-xs text-gray-500 mt-0.5">Basic metadata and files.</p>
               </div>
 
+              {/* NEW: Suggestion strip */}
               <div>
-                <Label htmlFor="coverImage" required hint="PNG/JPG up to 5MB.">
-                  Cover Image
+                <Label htmlFor="cover-preset" hint="Choose a suggested image (or upload your own). If you don’t upload, the selected suggestion will be used.">
+                  Suggested Covers
+                </Label>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {PRESET_IMAGES.map((p, idx) => {
+                    const active = Number.isInteger(selectedPresetIndex)
+                      ? selectedPresetIndex === idx && !formData.coverImage
+                      : idx === 0 && !formData.coverImage;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={[
+                          "relative aspect-[4/3] rounded-lg overflow-hidden border transition",
+                          active ? "border-[#5a6c17] ring-2 ring-[#5a6c17]" : "border-gray-200 hover:border-gray-300",
+                        ].join(" ")}
+                        title={p.label}
+                        onClick={() => {
+                          // Selecting a preset clears uploaded cover (so preset truly selected)
+                          handleRemoveCoverImage();
+                          setSelectedPresetIndex(idx);
+                        }}
+                      >
+                        <img src={p.src} alt={p.label} className="w-full h-full object-cover" loading="lazy" />
+                        <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">
+                          {p.label}
+                        </span>
+                        {active && (
+                          <span className="absolute top-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
+                            Selected
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Show preset preview only when no manual upload exists */}
+                {!formData.coverImage && (
+                  <div className="mt-3">
+                    <div className="rounded-xl border border-gray-200 bg-white p-2 inline-block shadow-sm">
+                      <img
+                        src={currentPresetSrc}
+                        alt="Preset preview"
+                        className="max-h-56 rounded-md object-contain"
+                        style={{ maxWidth: "72vw" }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Cover Image Upload (manual) */}
+              <div className="mt-4">
+                <Label htmlFor="coverImage" hint="PNG/JPG up to 5MB.">
+                  Cover Image (optional if using suggestion)
                 </Label>
                 <FileUpload
                   type="image"
                   onChange={(e) => handleFileChange(e, "coverImage")}
-                  onRemove={handleRemoveCoverImage}  // NEW: clears parent state
+                  onRemove={handleRemoveCoverImage}
                   progress={0}
                   showSuccessMessage={false}
-                  required
+                  required={false}
                 />
-                {errors.coverImage && (
-                  <p className="text-red-500 text-xs mt-1">{errors.coverImage}</p>
-                )}
+                {/* No coverImage required error anymore */}
               </div>
 
+              {/* PDF upload */}
               <div>
                 <Label htmlFor="attachment" hint="Optional. PDF up to 200MB.">
                   Upload PDF
@@ -622,21 +730,21 @@ export default function CreateBookPage() {
 
               <div>
                 <Label htmlFor="translator">Translator</Label>
-                <Select name="translator" value={formData.translator} onChange={handleChange}>
+                <SelectEl name="translator" value={formData.translator} onChange={handleChange}>
                   <option value="">Select translator</option>
                   {translators.map((t) => (
                     <option key={t._id} value={t.name}>
                       {t.name}
                     </option>
                   ))}
-                </Select>
+                </SelectEl>
               </div>
 
               <div>
                 <Label htmlFor="language" required>
                   Language
                 </Label>
-                <Select
+                <SelectEl
                   name="language"
                   value={formData.language}
                   onChange={handleChange}
@@ -648,7 +756,7 @@ export default function CreateBookPage() {
                       {lang.language}
                     </option>
                   ))}
-                </Select>
+                </SelectEl>
                 {errors.language && (
                   <p className="text-red-500 text-xs mt-1">{errors.language}</p>
                 )}
@@ -681,24 +789,24 @@ export default function CreateBookPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="status">Status</Label>
-                  <Select name="status" value={formData.status} onChange={handleChange}>
+                  <SelectEl name="status" value={formData.status} onChange={handleChange}>
                     <option value="">Select status</option>
                     <option value="draft">Draft</option>
                     <option value="published">Published</option>
                     <option value="archived">Archived</option>
-                  </Select>
+                  </SelectEl>
                 </div>
 
                 <div>
                   <Label htmlFor="isPublished">Publish?</Label>
-                  <Select
+                  <SelectEl
                     name="isPublished"
                     value={formData.isPublished}
                     onChange={handleChange}
                   >
                     <option value="true">Yes</option>
                     <option value="false">No</option>
-                  </Select>
+                  </SelectEl>
                 </div>
               </div>
             </div>

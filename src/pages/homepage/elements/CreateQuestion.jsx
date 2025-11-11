@@ -10,6 +10,37 @@ import { FileText, X } from "lucide-react";
 import Quill from "quill";
 import API_BASE_URL from "../../../../config";
 
+/* ---------- NEW: preset images ---------- */
+import img1 from "../../../assets/Images/img1.jpg";
+import img2 from "../../../assets/Images/img2.jpg";
+import img3 from "../../../assets/Images/img3.jpg";
+import img4 from "../../../assets/Images/img4.jpg";
+import img5 from "../../../assets/Images/img5.jpg";
+import img6 from "../../../assets/Images/img6.jpg";
+import img7 from "../../../assets/Images/img7.jpg";
+import img8 from "../../../assets/Images/img8.jpg";
+import img9 from "../../../assets/Images/img9.jpg";
+
+const PRESET_IMAGES = [
+  { id: "img1", src: img1, label: "img1" },
+  { id: "img2", src: img2, label: "img2" },
+  { id: "img3", src: img3, label: "img3" },
+  { id: "img4", src: img4, label: "img4" },
+  { id: "img5", src: img5, label: "img5" },
+  { id: "img6", src: img6, label: "img6" },
+  { id: "img7", src: img7, label: "img7" },
+  { id: "img8", src: img8, label: "img8" },
+  { id: "img9", src: img9, label: "img9" },
+];
+
+// Convert a bundled image URL into a File so backend receives it like an upload
+async function blobFromUrl(url) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  const ext = (url.split(".").pop() || "jpg").split("?")[0].toLowerCase();
+  return new File([blob], `preset.${ext}`, { type: blob.type || "image/jpeg" });
+}
+
 /* ---------- Quill Fonts ---------- */
 const Font = Quill.import("formats/font");
 Font.whitelist = [
@@ -104,12 +135,15 @@ export default function CreateQuestionsForm() {
   const [selectedLanguage, setSelectedLanguage] = useState("");
   const [selectedTopic, setSelectedTopic] = useState("");
   const [selectedTranslator, setSelectedTranslator] = useState("");
-  const [answeredStatus, setAnsweredStatus] = useState(""); // NEW required
+  const [answeredStatus, setAnsweredStatus] = useState(""); // required
 
   /* ---------- Image ---------- */
   const [uploadedImageFile, setUploadedImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
+
+  // NEW: selected preset (default img1)
+  const [selectedPresetIndex, setSelectedPresetIndex] = useState(0);
 
   /* ---------- Language blocks (Q + A) ---------- */
   const [questionEnglish, setQuestionEnglish] = useState("");
@@ -172,6 +206,8 @@ export default function CreateQuestionsForm() {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
     setUploadedImageFile(file);
     setImagePreview(URL.createObjectURL(file));
+    // Manual upload overrides preset selection visually
+    setSelectedPresetIndex(null);
   };
 
   const clearImage = (e) => {
@@ -180,6 +216,8 @@ export default function CreateQuestionsForm() {
     setUploadedImageFile(null);
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    // If no preset explicitly selected, restore default img1
+    if (!Number.isInteger(selectedPresetIndex)) setSelectedPresetIndex(0);
   };
 
   /* ---------- Submit ---------- */
@@ -190,56 +228,68 @@ export default function CreateQuestionsForm() {
       !selectedDate ||
       !selectedLanguage ||
       !selectedTopic ||
-      !uploadedImageFile ||
       !answeredStatus
+      // NOTE: image NOT required here; preset covers it.
     ) {
       Swal.fire({
         icon: "warning",
         title: "Incomplete Fields",
-        text: "Please fill all required fields including the image and answered status.",
+        text: "Please fill all required fields including answered status.",
       });
       return;
     }
 
     const formData = new FormData();
-    formData.append("image", uploadedImageFile);
-
-    formData.append("slug", slug);
-
-    // EN
-    formData.append("questionEnglish", questionEnglish || "");
-    formData.append("answerEnglish", answerEnglish || "");
-    // UR
-    formData.append("questionUrdu", questionUrdu || "");
-    formData.append("answerUrdu", answerUrdu || "");
-    // Roman Urdu
-    formData.append("questionRoman", questionRoman || "");
-    formData.append("answerRoman", answerRoman || "");
-    // Hindi
-    formData.append("questionHindi", questionHindi || "");
-    formData.append("answerHindi", answerHindi || "");
-
-    // Meta
-    formData.append("writer", selectedWriter);
-    formData.append("date", selectedDate);
-    formData.append("language", selectedLanguage);
-    formData.append("topic", selectedTopic);
-    formData.append("answeredStatus", answeredStatus); // NEW
-
-    if (selectedTag) formData.append("tags", selectedTag);
-    if (selectedTranslator) formData.append("translator", selectedTranslator);
-
-    Swal.fire({
-      title: "Submitting...",
-      text: "Please wait while the question is being saved.",
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading(),
-    });
 
     try {
-      const response = await axios.post(`https://minaramasjid-backend.onrender.com/api/questions`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      // Decide which image to send:
+      if (uploadedImageFile) {
+        formData.append("image", uploadedImageFile);
+      } else {
+        const idx = Number.isInteger(selectedPresetIndex) ? selectedPresetIndex : 0;
+        const preset = PRESET_IMAGES[idx] || PRESET_IMAGES[0];
+        const fileFromPreset = await blobFromUrl(preset.src);
+        formData.append("image", fileFromPreset, `${preset.label || "preset"}.jpg`);
+        formData.append("coverPresetLabel", preset.label || `img${idx + 1}`);
+      }
+
+      formData.append("slug", slug);
+
+      // EN
+      formData.append("questionEnglish", questionEnglish || "");
+      formData.append("answerEnglish", answerEnglish || "");
+      // UR
+      formData.append("questionUrdu", questionUrdu || "");
+      formData.append("answerUrdu", answerUrdu || "");
+      // Roman Urdu
+      formData.append("questionRoman", questionRoman || "");
+      formData.append("answerRoman", answerRoman || "");
+      // Hindi
+      formData.append("questionHindi", questionHindi || "");
+      formData.append("answerHindi", answerHindi || "");
+
+      // Meta
+      formData.append("writer", selectedWriter);
+      formData.append("date", selectedDate);
+      formData.append("language", selectedLanguage);
+      formData.append("topic", selectedTopic);
+      formData.append("answeredStatus", answeredStatus);
+
+      if (selectedTag) formData.append("tags", selectedTag);
+      if (selectedTranslator) formData.append("translator", selectedTranslator);
+
+      Swal.fire({
+        title: "Submitting...",
+        text: "Please wait while the question is being saved.",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading(),
       });
+
+      const response = await axios.post(
+        `https://minaramasjid-backend.onrender.com/api/questions`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
 
       if (response.status === 201) {
         Swal.fire({
@@ -268,6 +318,7 @@ export default function CreateQuestionsForm() {
         setSelectedTranslator("");
         setAnsweredStatus("");
         clearImage();
+        setSelectedPresetIndex(0);
       } else {
         Swal.fire({ icon: "error", title: "Submission Failed", text: "Please try again." });
       }
@@ -283,6 +334,11 @@ export default function CreateQuestionsForm() {
 
   const tagOptions = tags.map((tagObj) => ({ value: tagObj.tag, label: tagObj.tag }));
   const topicOptions = topics.map((t) => ({ value: t.topic, label: t.topic }));
+
+  // Preview source: manual upload first; else preset
+  const currentPreviewSrc =
+    imagePreview ||
+    (Number.isInteger(selectedPresetIndex) ? PRESET_IMAGES[selectedPresetIndex].src : PRESET_IMAGES[0].src);
 
   return (
     <Layout>
@@ -318,37 +374,79 @@ export default function CreateQuestionsForm() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight">Create Questions</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Fill required fields, add multi-language content, and upload a featured image.
+            Fill required fields, add multi-language content, and add a featured image (suggested or uploaded).
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* LEFT: Content & Image */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Featured Image (required) */}
+            {/* Featured Image (suggest + upload) */}
             <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-              <label className="text-sm font-medium mb-3 block">
-                Featured Image <span className="text-red-500">*</span>
-              </label>
+              <label className="text-sm font-medium mb-3 block">Featured Image</label>
+
+              {/* Suggestion strip */}
+              <div className="mb-3">
+                <p className="text-xs text-gray-600 mb-2">
+                  Choose a suggested image (or upload your own). If you don’t upload, the selected suggestion will be used.
+                </p>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {PRESET_IMAGES.map((p, idx) => {
+                    const active = Number.isInteger(selectedPresetIndex)
+                      ? selectedPresetIndex === idx && !uploadedImageFile
+                      : idx === 0 && !uploadedImageFile;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={[
+                          "relative aspect-[4/3] rounded-lg overflow-hidden border transition",
+                          active ? "border-[#5a6c17] ring-2 ring-[#5a6c17]" : "border-gray-200 hover:border-gray-300",
+                        ].join(" ")}
+                        title={p.label}
+                        onClick={() => {
+                          clearImage(); // clears manual upload if any
+                          setSelectedPresetIndex(idx);
+                        }}
+                      >
+                        <img src={p.src} alt={p.label} className="w-full h-full object-cover" loading="lazy" />
+                        <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">
+                          {p.label}
+                        </span>
+                        {active && (
+                          <span className="absolute top-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
+                            Selected
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Upload area + preview */}
               <div
                 className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center hover:bg-gray-50 cursor-pointer relative"
                 onClick={() => fileInputRef.current?.click()}
               >
-                {imagePreview ? (
+                {currentPreviewSrc ? (
                   <div className="relative inline-block">
                     <img
-                      src={imagePreview}
-                      alt="Uploaded"
+                      src={currentPreviewSrc}
+                      alt="Preview"
                       className="w-56 h-56 object-cover rounded-xl shadow"
                     />
-                    <button
-                      type="button"
-                      title="Remove image"
-                      onClick={clearImage}
-                      className="absolute -right-2 -top-2 bg-white border border-gray-300 rounded-full p-1 shadow hover:bg-gray-50"
-                    >
-                      <X className="w-4 h-4 text-gray-700" />
-                    </button>
+                    {/* Remove button shows only for manual upload */}
+                    {uploadedImageFile && (
+                      <button
+                        type="button"
+                        title="Remove image"
+                        onClick={clearImage}
+                        className="absolute -right-2 -top-2 bg-white border border-gray-300 rounded-full p-1 shadow hover:bg-gray-50"
+                      >
+                        <X className="w-4 h-4 text-gray-700" />
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center">
@@ -367,7 +465,7 @@ export default function CreateQuestionsForm() {
                   style={{ display: "none" }}
                   accept="image/*"
                   onChange={handleImageUpload}
-                  required
+                  /* no required here – preset covers default */
                 />
               </div>
             </section>

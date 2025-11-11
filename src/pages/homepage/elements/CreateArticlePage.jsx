@@ -9,6 +9,16 @@ import "react-quill/dist/quill.snow.css";
 import Quill from "quill";
 import API_BASE_URL from "../../../../config";
 
+import img1 from "../../../assets/Images/img1.jpg";
+import img2 from "../../../assets/Images/img2.jpg";
+import img3 from "../../../assets/Images/img3.jpg";
+import img4 from "../../../assets/Images/img4.jpg";
+import img5 from "../../../assets/Images/img5.jpg";
+import img6 from "../../../assets/Images/img6.jpg";
+import img7 from "../../../assets/Images/img7.jpg";
+import img8 from "../../../assets/Images/img8.jpg";
+import img9 from "../../../assets/Images/img9.jpg";
+
 /* ---------- Quill Fonts ---------- */
 const Font = Quill.import("formats/font");
 Font.whitelist = [
@@ -33,6 +43,14 @@ const getCurrentDate = () => {
   const day = String(today.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
+async function blobFromUrl(url) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  // Try to preserve extension from URL, fallback to .jpg
+  const ext = (url.split(".").pop() || "jpg").split("?")[0].toLowerCase();
+  return new File([blob], `preset.${ext}`, { type: blob.type || "image/jpeg" });
+}
 
 /* ---------- Quill Config ---------- */
 const quillModules = {
@@ -90,6 +108,19 @@ const quillFormats = [
   "clean",
 ];
 
+/* ---------- Preset images (suggestions) ---------- */
+const PRESET_IMAGES = [
+  { id: "img1", src: img1, label: "img1" },
+  { id: "img2", src: img2, label: "img2" },
+  { id: "img3", src: img3, label: "img3" },
+  { id: "img4", src: img4, label: "img4" },
+  { id: "img5", src: img5, label: "img5" },
+  { id: "img6", src: img6, label: "img6" },
+  { id: "img7", src: img7, label: "img7" },
+  { id: "img8", src: img8, label: "img8" },
+  { id: "img9", src: img9, label: "img9" },
+];
+
 export default function CreateArticlePage() {
   /* ---------- Meta / selects ---------- */
   const [publicationDate, setPublicationDate] = useState(getCurrentDate());
@@ -110,7 +141,10 @@ export default function CreateArticlePage() {
   const [uploadedImageURL, setUploadedImageURL] = useState(null);
   const fileInputRef = useRef(null);
 
-  // NEW: upload progress UI
+  // Suggestion state: default to first preset (img1)
+  const [selectedPresetIndex, setSelectedPresetIndex] = useState(0);
+
+  // Upload progress UI
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -173,8 +207,9 @@ export default function CreateArticlePage() {
       });
       return;
     }
-    setUploadedImageFile(file);
 
+    setUploadedImageFile(file);
+    setSelectedPresetIndex(null); // uploading overrides preset selection
     const reader = new FileReader();
     reader.onloadend = () => setUploadedImageURL(reader.result);
     reader.readAsDataURL(file);
@@ -204,10 +239,7 @@ export default function CreateArticlePage() {
       });
       return false;
     }
-    if (!uploadedImageFile) {
-      const ok = window.confirm("Continue without a featured image?");
-      if (!ok) return false;
-    }
+    // NOTE: No need to force upload; we will use preset (default img1) if no upload.
     return true;
   };
 
@@ -220,9 +252,22 @@ export default function CreateArticlePage() {
       setUploadProgress(0);
 
       const formData = new FormData();
-      if (uploadedImageFile) formData.append("image", uploadedImageFile);
 
-      // Core
+      // 1) Determine which image to send:
+      // - If user uploaded -> send that.
+      // - Else -> send selected preset (default to img1).
+      if (uploadedImageFile) {
+        formData.append("image", uploadedImageFile);
+      } else {
+        const idx = Number.isInteger(selectedPresetIndex) ? selectedPresetIndex : 0;
+        const preset = PRESET_IMAGES[idx] || PRESET_IMAGES[0];
+        // Turn the bundled asset URL into a File so backend gets it like a real upload
+        const fileFromPreset = await blobFromUrl(preset.src);
+        formData.append("image", fileFromPreset, `${preset.label || "preset"}.jpg`);
+        formData.append("coverPresetLabel", preset.label || `img${idx + 1}`);
+      }
+
+      // 2) Core fields
       formData.append("title", articleTitle);
       formData.append("topic", selectedTopic);
       formData.append("writers", showCustomWriterInput ? customWriterName : selectedWriter);
@@ -232,7 +277,7 @@ export default function CreateArticlePage() {
       formData.append("isPublished", isPublish);
       formData.append("createdAt", new Date().toISOString());
 
-      // Language payloads
+      // 3) Language payloads
       formData.append("englishTitle", englishTitle || "");
       formData.append("englishDescription", englishDescription || "");
 
@@ -245,18 +290,22 @@ export default function CreateArticlePage() {
       formData.append("hindiTitle", hindiTitle || "");
       formData.append("hindiDescription", hindiDescription || "");
 
-      // Optional
+      // 4) Optional
       if (selectedTranslator) formData.append("translator", selectedTranslator);
       if (selectedTag) formData.append("tags", selectedTag);
 
-      await axios.post(`https://minaramasjid-backend.onrender.com/api/articles`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (evt) => {
-          if (!evt.total) return; // total may be undefined
-          const percent = Math.round((evt.loaded * 100) / evt.total);
-          setUploadProgress(percent);
-        },
-      });
+      await axios.post(
+        `https://minaramasjid-backend.onrender.com/api/articles`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+          onUploadProgress: (evt) => {
+            if (!evt.total) return;
+            const percent = Math.round((evt.loaded * 100) / evt.total);
+            setUploadProgress(percent);
+          },
+        }
+      );
 
       setIsUploading(false);
       setUploadProgress(100);
@@ -285,6 +334,11 @@ export default function CreateArticlePage() {
   /* ---------- Select options ---------- */
   const tagOptions = (tags || []).map((t) => ({ value: t.tag, label: t.tag }));
   const topicOptions = (topics || []).map((t) => ({ value: t.topic, label: t.topic }));
+
+  // Helper: current preview source (uploaded takes priority; else preset)
+  const currentPreviewSrc =
+    uploadedImageURL ||
+    (Number.isInteger(selectedPresetIndex) ? PRESET_IMAGES[selectedPresetIndex].src : PRESET_IMAGES[0].src);
 
   return (
     <Layout>
@@ -333,41 +387,83 @@ export default function CreateArticlePage() {
                   Featured Image
                 </label>
 
+                {/* Suggestion strip */}
+                <div className="mb-4">
+                  <p className="text-xs text-gray-600 mb-2">
+                    Choose a suggested image (or upload your own). If you don’t upload, the selected suggestion will be used.
+                  </p>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {PRESET_IMAGES.map((p, idx) => {
+                      const active = Number.isInteger(selectedPresetIndex)
+                        ? selectedPresetIndex === idx && !uploadedImageFile
+                        : idx === 0 && !uploadedImageFile;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className={[
+                            "relative aspect-[4/3] rounded-lg overflow-hidden border transition",
+                            active ? "border-[#5a6c17] ring-2 ring-[#5a6c17]" : "border-gray-200 hover:border-gray-300",
+                          ].join(" ")}
+                          title={p.label}
+                          onClick={() => {
+                            // Selecting a preset also clears uploaded image preview (so preset truly selected)
+                            clearImage();
+                            setSelectedPresetIndex(idx);
+                          }}
+                        >
+                          <img src={p.src} alt={p.label} className="w-full h-full object-cover" loading="lazy" />
+                          <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">
+                            {p.label}
+                          </span>
+                          {active && (
+                            <span className="absolute top-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
+                              Selected
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Upload area */}
                 <div
                   className="mt-2 border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer hover:bg-gray-50 transition relative"
                   onClick={(e) => {
-                    // If clicking the remove button, don't open file dialog
-                    if ((e.target).closest?.(".btn-remove-image")) return;
+                    if (e.target.closest?.(".btn-remove-image")) return;
                     fileInputRef.current?.click();
                   }}
                 >
-                  {uploadedImageURL ? (
+                  {currentPreviewSrc ? (
                     <div className="relative inline-block">
                       <img
-                        src={uploadedImageURL}
+                        src={currentPreviewSrc}
                         alt="Preview"
                         className="mx-auto w-64 h-64 object-cover rounded-xl shadow"
                       />
 
-                      {/* Remove image button */}
-                      <button
-                        type="button"
-                        title="Remove image"
-                        className="btn-remove-image absolute -right-3 -top-3 bg-white/90 border border-gray-300 rounded-full p-1 shadow hover:bg-white"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          clearImage();
-                        }}
-                      >
-                        <X className="w-4 h-4 text-gray-700" />
-                      </button>
+                      {/* Remove image button (only when user uploaded) */}
+                      {uploadedImageFile && (
+                        <button
+                          type="button"
+                          title="Remove image"
+                          className="btn-remove-image absolute -right-3 -top-3 bg-white/90 border border-gray-300 rounded-full p-1 shadow hover:bg-white"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearImage();
+                          }}
+                        >
+                          <X className="w-4 h-4 text-gray-700" />
+                        </button>
+                      )}
 
                       {/* Upload progress overlay */}
                       {isUploading && (
                         <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] rounded-xl flex flex-col justify-end">
                           <div className="px-4 pb-4 text-white text-sm">
                             <div className="mb-2 flex items-center justify-between">
-                              <span>Uploading image…</span>
+                              <span>Uploading…</span>
                               <span>{uploadProgress}%</span>
                             </div>
                             <div className="h-2 w-full bg-white/30 rounded-full overflow-hidden">
@@ -392,11 +488,10 @@ export default function CreateArticlePage() {
                         Browse Files
                       </button>
 
-                      {/* Progress bar when no preview yet (still uploading during submit) */}
                       {isUploading && (
                         <div className="mt-6 w-full max-w-sm text-left">
                           <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
-                            <span>Uploading image…</span>
+                            <span>Uploading…</span>
                             <span>{uploadProgress}%</span>
                           </div>
                           <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
@@ -713,7 +808,7 @@ export default function CreateArticlePage() {
                   type="date"
                   value={publicationDate}
                   onChange={(e) => setPublicationDate(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm outline-none focus:ring-2 focus:ring-blue-300"
+                  className="w-full rounded-XL border border-gray-200 bg-white px-3 py-2 shadow-sm outline-none focus:ring-2 focus:ring-blue-300"
                   required
                 />
               </div>
