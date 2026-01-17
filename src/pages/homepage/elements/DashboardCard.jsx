@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Book, FileText, Globe, Users } from "lucide-react";
 import axios from "axios";
 import Layout from "../../../component/Layout";
+import API_BASE_URL from "../../../../config";
 
 
 export default function DashboardOverview() {
@@ -17,7 +18,7 @@ export default function DashboardOverview() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get("https://newmmdata-backend.onrender.com/api/books/count")
+    axios.get(`${API_BASE_URL}/api/books/count`)
       .then((res) => {
         setCounts({
           writerCount: res.data.writerCount || 0,

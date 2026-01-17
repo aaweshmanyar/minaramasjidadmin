@@ -13,11 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-/* --------------------------
-   API base
---------------------------- */
-const API_BASE_URL = "https://minaramasjid-backend.onrender.com";
+import API_BASE_URL from "../../../../config";
 
 /* --------------------------
    Helpers
@@ -461,9 +457,8 @@ export default function GalleryList() {
                     <button
                       key={img.id}
                       onClick={() => jumpTo(i)}
-                      className={`relative aspect-square rounded-lg overflow-hidden border ${
-                        i === viewer.index ? "ring-2 ring-emerald-500" : ""
-                      }`}
+                      className={`relative aspect-square rounded-lg overflow-hidden border ${i === viewer.index ? "ring-2 ring-emerald-500" : ""
+                        }`}
                       title={img.imageName || `Image ${i + 1}`}
                     >
                       <img

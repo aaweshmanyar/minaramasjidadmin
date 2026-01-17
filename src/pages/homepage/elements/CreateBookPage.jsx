@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from "react";
-import { CalendarIcon, X } from "lucide-react";
+import { CalendarIcon, X, Hash } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../../component/Layout";
 import ReactQuill from "react-quill";
 import DatePicker from "react-datepicker";
+import Select from "react-select";
 import "react-quill/dist/quill.snow.css";
 import "react-datepicker/dist/react-datepicker.css";
 import Swal from "sweetalert2";
@@ -324,6 +325,9 @@ export default function CreateBookPage() {
 
   const [languages, setLanguages] = useState([]);
   const [translators, setTranslators] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [selectedTag, setSelectedTag] = useState("");
+
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -333,19 +337,23 @@ export default function CreateBookPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [langRes, transRes] = await Promise.all([
+        const [langRes, transRes, tagsRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/languages/language`),
           fetch(`${API_BASE_URL}/api/translators`),
+          fetch(`${API_BASE_URL}/api/tags`),
         ]);
 
         if (!langRes.ok) throw new Error("Failed to fetch languages");
         if (!transRes.ok) throw new Error("Failed to fetch translators");
+        // tags might be optional, but good to fetch
 
         const langData = await langRes.json();
         const transData = await transRes.json();
+        const tagsData = tagsRes.ok ? await tagsRes.json() : [];
 
         if (Array.isArray(langData)) setLanguages(langData);
         if (Array.isArray(transData)) setTranslators(transData);
+        if (Array.isArray(tagsData)) setTags(tagsData);
       } catch (err) {
         console.error("Error fetching data:", err);
       }
@@ -448,6 +456,7 @@ export default function CreateBookPage() {
     payload.append("status", formData.status);
     payload.append("category", formData.category);
     payload.append("isPublished", formData.isPublished);
+    if (selectedTag) payload.append("tags", selectedTag);
 
     try {
       // Cover image:
@@ -466,7 +475,9 @@ export default function CreateBookPage() {
       // Optional attachment
       if (formData.attachment) payload.append("attachment", formData.attachment);
 
-      const response = await fetch(`https://minaramasjid.com/api/books`, {
+      if (formData.attachment) payload.append("attachment", formData.attachment);
+
+      const response = await fetch(`${API_BASE_URL}/api/books`, {
         method: "POST",
         body: payload,
       });
@@ -518,6 +529,8 @@ export default function CreateBookPage() {
   // For visual preview when using a preset (FileUpload already previews manual uploads)
   const currentPresetSrc =
     Number.isInteger(selectedPresetIndex) ? PRESET_IMAGES[selectedPresetIndex].src : PRESET_IMAGES[0].src;
+
+  const tagOptions = (tags || []).map((t) => ({ value: t.tag, label: t.tag }));
 
   /* ---------- Render ---------- */
   return (
@@ -683,6 +696,32 @@ export default function CreateBookPage() {
                     onChange={handleChange}
                   />
                 </div>
+              </div>
+
+              {/* Tags */}
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Hash className="w-4 h-4" />
+                  <label className="text-sm font-medium">Tags</label>
+                </div>
+                <Select
+                  options={tagOptions}
+                  value={tagOptions.find((o) => o.value === selectedTag) || null}
+                  onChange={(opt) => setSelectedTag(opt?.value || "")}
+                  placeholder="Select a tag..."
+                  isSearchable
+                  className="text-sm"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderRadius: "0.75rem",
+                      borderColor: "#e5e7eb",
+                      padding: "2px",
+                      boxShadow: "none",
+                      "&:hover": { borderColor: "#d1d5db" },
+                    }),
+                  }}
+                />
               </div>
             </div>
 

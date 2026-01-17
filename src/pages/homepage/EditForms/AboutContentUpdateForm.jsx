@@ -1,4 +1,4 @@
-import React, {useState } from 'react'
+import React, { useState } from 'react'
 import Layout from '../../../component/Layout'
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -90,7 +90,7 @@ const AboutContentUpdateForm = (props) => {
 
     try {
       await axios.put(
-        `${process.env.REACT_APP_BASE_URL || "https://newmmdata-backend.onrender.com"}/api/about/${props.content.id}`,
+        `${API_BASE_URL}/api/about/${props.content.id}`,
         form,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -106,95 +106,95 @@ const AboutContentUpdateForm = (props) => {
 
   return (
     <Layout>
-       <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      <h3 className="text-xl font-bold mb-4">Edit About Content</h3>
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium">English Title</label>
+      <div className="bg-white p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <h3 className="text-xl font-bold mb-4">Edit About Content</h3>
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium">English Title</label>
+              <input
+                type="text"
+                name="englishTitle"
+                value={formData.englishTitle}
+                onChange={handleInputChange}
+                required
+                className="mt-1 p-2 border border-gray-300 rounded w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Urdu Title</label>
+              <input
+                type="text"
+                name="urduTitle"
+                value={formData.urduTitle}
+                onChange={handleInputChange}
+                required
+                className="mt-1 p-2 border border-gray-300 rounded w-full"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium">English Description</label>
+              <ReactQuill
+                theme="snow"
+                value={formData.englishDescription}
+                onChange={(value) =>
+                  setFormData({ ...formData, englishDescription: value })
+                }
+                modules={modules}
+                formats={formats}
+                className="bg-white border rounded-lg min-h-[200px]"
+                style={{ direction: 'ltr', textAlign: 'left' }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium">Urdu Description</label>
+              <ReactQuill
+                theme="snow"
+                value={formData.urduDescription}
+                onChange={(value) =>
+                  setFormData({ ...formData, urduDescription: value })
+                }
+                modules={modules}
+                formats={formats}
+                className="bg-white border rounded-lg min-h-[200px]"
+                style={{ direction: 'rtl', textAlign: 'right' }}
+              />
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium">Image</label>
             <input
-              type="text"
-              name="englishTitle"
-              value={formData.englishTitle}
-              onChange={handleInputChange}
-              required
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
               className="mt-1 p-2 border border-gray-300 rounded w-full"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium">Urdu Title</label>
-            <input
-              type="text"
-              name="urduTitle"
-              value={formData.urduTitle}
-              onChange={handleInputChange}
-              required
-              className="mt-1 p-2 border border-gray-300 rounded w-full"
-            />
+
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={props.onClose}
+              className="px-4 py-2 bg-gray-400 text-white rounded"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Update
+            </button>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium">English Description</label>
-            <ReactQuill
-              theme="snow"
-              value={formData.englishDescription}
-              onChange={(value) => 
-                setFormData({...formData, englishDescription: value})
-              }
-              modules={modules}
-              formats={formats}
-              className="bg-white border rounded-lg min-h-[200px]"
-              style={{ direction: 'ltr', textAlign: 'left' }}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium">Urdu Description</label>
-            <ReactQuill
-              theme="snow"
-              value={formData.urduDescription}
-              onChange={(value) => 
-                setFormData({...formData, urduDescription: value})
-              }
-              modules={modules}
-              formats={formats}
-              className="bg-white border rounded-lg min-h-[200px]"
-              style={{ direction: 'rtl', textAlign: 'right' }}
-            />
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-sm font-medium">Image</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            className="mt-1 p-2 border border-gray-300 rounded w-full"
-          />
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={props.onClose}
-            className="px-4 py-2 bg-gray-400 text-white rounded"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Update
-          </button>
-        </div>
-      </form>
-    </div>
+        </form>
+      </div>
     </Layout>
   )
 }

@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import axios from "axios";
+import API_BASE_URL from "../../../../config";
 
 const modules = {
   toolbar: [
@@ -58,7 +59,7 @@ const TopicUpdateForm = () => {
     const fetchTopic = async () => {
       try {
         const res = await axios.get(
-          `https://minaramasjid-backend.onrender.com/api/topics/${id}`
+          `${API_BASE_URL}/api/topics/${id}`
         );
         const data = res.data || {};
 
@@ -66,7 +67,7 @@ const TopicUpdateForm = () => {
         setAbout(data.about || "");
 
         // Load current server image for preview, cache-busted
-        const serverImgUrl = `https://minaramasjid-backend.onrender.com/api/topics/image/${id}?ts=${Date.now()}`;
+        const serverImgUrl = `${API_BASE_URL}/api/topics/image/${id}?ts=${Date.now()}`;
 
         const img = new Image();
         img.onload = () => setImagePreview(serverImgUrl);
@@ -129,7 +130,7 @@ const TopicUpdateForm = () => {
       });
 
       await axios.put(
-        `https://minaramasjid-backend.onrender.com/api/topics/${id}`,
+        `${API_BASE_URL}/api/topics/${id}`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );

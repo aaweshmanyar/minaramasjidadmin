@@ -6,9 +6,7 @@ import "react-quill/dist/quill.snow.css";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { CornerUpLeft, ImagePlus, Trash2 } from "lucide-react";
-
-// Backend base URL
-const API_BASE_URL = "https://minaramasjid-backend.onrender.com";
+import API_BASE_URL from "../../../../config";
 
 const quillModules = {
   toolbar: [
@@ -186,7 +184,7 @@ export default function CreateGallery() {
       Swal.fire(
         "Error",
         e.response?.data?.message ||
-          (isEdit ? "Failed to update gallery." : "Failed to create gallery."),
+        (isEdit ? "Failed to update gallery." : "Failed to create gallery."),
         "error"
       );
     }

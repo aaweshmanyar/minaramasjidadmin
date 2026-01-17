@@ -116,6 +116,12 @@ export default function CreateEvent() {
   const [uploadedImageFile, setUploadedImageFile] = useState(null);
   const [uploadedImageURL, setUploadedImageURL] = useState(null);
   const fileInputRef = useRef(null);
+
+  /* ---------- Gallery ---------- */
+  const [galleryFiles, setGalleryFiles] = useState([]);
+  const [galleryPreviews, setGalleryPreviews] = useState([]);
+  const galleryInputRef = useRef(null);
+
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -167,6 +173,37 @@ export default function CreateEvent() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  /* ---------- Gallery handlers ---------- */
+  const handleGalleryUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    // Filter validation
+    const validFiles = files.filter(f => f.size <= 5 * 1024 * 1024);
+    if (validFiles.length < files.length) {
+      Swal.fire({
+        icon: "warning",
+        title: "Some files skipped",
+        text: "Images must be under 5MB each.",
+      });
+    }
+
+    setGalleryFiles(prev => [...prev, ...validFiles]);
+
+    // Generate previews
+    const newPreviews = validFiles.map(f => URL.createObjectURL(f));
+    setGalleryPreviews(prev => [...prev, ...newPreviews]);
+  };
+
+  const removeGalleryImage = (index) => {
+    setGalleryFiles(prev => prev.filter((_, i) => i !== index));
+    setGalleryPreviews(prev => {
+      // revoke object url to avoid leaks
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
   /* ---------- Validation ---------- */
   const validateForm = () => {
     const required = [
@@ -202,6 +239,11 @@ export default function CreateEvent() {
         formData.append("image", uploadedImageFile);
       }
 
+      // Append gallery images
+      galleryFiles.forEach((file) => {
+        formData.append("gallery", file);
+      });
+
       // Core event fields
       formData.append("title", eventTitle);
       formData.append("slug", eventTitle); // adjust if you have a slugify on backend
@@ -231,7 +273,7 @@ export default function CreateEvent() {
       formData.append("hindiTitle", hindiTitle || "");
       formData.append("hindiDescription", hindiDescription || "");
 
-      await axios.post(`https://minaramasjid-backend.onrender.com/api/events`, formData, {
+      await axios.post(`${API_BASE_URL}/api/events`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (evt) => {
           if (!evt.total) return;
@@ -394,6 +436,52 @@ export default function CreateEvent() {
                     style={{ display: "none" }}
                     accept="image/*"
                     onChange={handleImageUpload}
+                  />
+                </div>
+              </section>
+
+              {/* Gallery Images */}
+              <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <label className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4" />
+                  Gallery Images <span className="text-gray-500">(Optional)</span>
+                </label>
+
+                <div className="mt-2">
+                  {/* Previews of NEW images */}
+                  {galleryPreviews.length > 0 && (
+                    <div className="flex flex-wrap gap-4 mb-4">
+                      {galleryPreviews.map((src, idx) => (
+                        <div key={idx} className="relative w-24 h-24 border rounded-lg overflow-hidden shrink-0 shadow-sm">
+                          <img src={src} alt="Gallery" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            className="absolute top-1 right-1 bg-white/90 rounded-full p-1 shadow hover:bg-white transition"
+                            onClick={() => removeGalleryImage(idx)}
+                          >
+                            <X className="w-3 h-3 text-gray-700" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    Add Images
+                  </button>
+
+                  <input
+                    type="file"
+                    multiple
+                    ref={galleryInputRef}
+                    style={{ display: "none" }}
+                    accept="image/*"
+                    onChange={handleGalleryUpload}
                   />
                 </div>
               </section>

@@ -1,14 +1,16 @@
 import { useEffect, useState, useRef } from "react";
-import { CalendarIcon, X } from "lucide-react";
+import { CalendarIcon, X, Hash } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import Layout from "../../../component/Layout";
 import ReactQuill from "react-quill";
 import DatePicker from "react-datepicker";
+import Select from "react-select";
 import "react-quill/dist/quill.snow.css";
 import "react-datepicker/dist/react-datepicker.css";
 import Swal from "sweetalert2";
 import Quill from "quill";
 import API_BASE_URL from "../../../../config";
+
 
 /* ---------- Quill Fonts ---------- */
 const Font = Quill.import("formats/font");
@@ -86,11 +88,10 @@ const formats = [
 const Button = ({ children, className = "", variant = "", ...props }) => (
   <button
     type="button"
-    className={`px-4 py-2 rounded-lg font-medium shadow-sm transition ${
-      variant === "outline"
-        ? "border bg-white hover:bg-gray-50"
-        : "bg-gray-900 text-white hover:bg-black"
-    } ${className}`}
+    className={`px-4 py-2 rounded-lg font-medium shadow-sm transition ${variant === "outline"
+      ? "border bg-white hover:bg-gray-50"
+      : "bg-gray-900 text-white hover:bg-black"
+      } ${className}`}
     {...props}
   >
     {children}
@@ -227,8 +228,8 @@ const FileUpload = ({
               {labelOverride
                 ? labelOverride
                 : type === "image"
-                ? "Select cover image"
-                : "Select PDF file"}
+                  ? "Select cover image"
+                  : "Select PDF file"}
             </div>
             <div className="text-xs text-gray-500">
               {type === "image" ? "PNG/JPG up to 5MB" : "PDF up to 200MB"}
@@ -342,6 +343,9 @@ export default function EditBookPage() {
 
   const [languages, setLanguages] = useState([]);
   const [translators, setTranslators] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [selectedTag, setSelectedTag] = useState("");
+
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -358,22 +362,25 @@ export default function EditBookPage() {
   useEffect(() => {
     const loadAll = async () => {
       try {
-        const [langRes, transRes, bookRes] = await Promise.all([
+        const [langRes, transRes, tagsRes, bookRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/languages/language`),
           fetch(`${API_BASE_URL}/api/translators`),
+          fetch(`${API_BASE_URL}/api/tags`),
           fetch(`${BOOKS_BASE}/${id}`),
         ]);
 
         if (!bookRes.ok) throw new Error("Failed to fetch book");
 
-        const [langData, transData, book] = await Promise.all([
+        const [langData, transData, tagsData, book] = await Promise.all([
           langRes.ok ? langRes.json() : [],
           transRes.ok ? transRes.json() : [],
+          tagsRes.ok ? tagsRes.json() : [],
           bookRes.json(),
         ]);
 
         if (Array.isArray(langData)) setLanguages(langData);
         if (Array.isArray(transData)) setTranslators(transData);
+        if (Array.isArray(tagsData)) setTags(tagsData);
 
         // Map book -> form state
         setFormData((prev) => ({
@@ -394,6 +401,8 @@ export default function EditBookPage() {
           coverImage: null,
           attachment: null,
         }));
+
+        setSelectedTag(book.tags || "");
 
         // File URLs (ensure your API supports these)
         setExistingCoverUrl(
@@ -519,6 +528,7 @@ export default function EditBookPage() {
     // Only send files if replacing
     if (formData.coverImage) payload.append("coverImage", formData.coverImage);
     if (formData.attachment) payload.append("attachment", formData.attachment);
+    if (selectedTag) payload.append("tags", selectedTag);
 
     try {
       const res = await fetch(`${BOOKS_BASE}/${id}`, {
@@ -548,6 +558,11 @@ export default function EditBookPage() {
       setIsSubmitting(false);
     }
   };
+
+  const currentPresetSrc =
+    Number.isInteger(0) ? null : null; // simplified as we don't have preset index here
+
+  const tagOptions = (tags || []).map((t) => ({ value: t.tag, label: t.tag }));
 
   /* ---------- Render ---------- */
   return (
@@ -697,6 +712,32 @@ export default function EditBookPage() {
                     onChange={handleChange}
                   />
                 </div>
+              </div>
+
+              {/* Tags */}
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Hash className="w-4 h-4" />
+                  <label className="text-sm font-medium">Tags</label>
+                </div>
+                <Select
+                  options={tagOptions}
+                  value={tagOptions.find((o) => o.value === selectedTag) || null}
+                  onChange={(opt) => setSelectedTag(opt?.value || "")}
+                  placeholder="Select a tag..."
+                  isSearchable
+                  className="text-sm"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderRadius: "0.75rem",
+                      borderColor: "#e5e7eb",
+                      padding: "2px",
+                      boxShadow: "none",
+                      "&:hover": { borderColor: "#d1d5db" },
+                    }),
+                  }}
+                />
               </div>
             </div>
 

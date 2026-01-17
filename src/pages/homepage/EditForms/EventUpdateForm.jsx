@@ -129,6 +129,13 @@ export default function CreateOrEditEvent() {
   const [uploadedImageURL, setUploadedImageURL] = useState(null); // dataURL for new file
   const [serverImageURL, setServerImageURL] = useState(null); // existing image (edit mode)
   const fileInputRef = useRef(null);
+
+  /* ---------- Gallery ---------- */
+  const [galleryFiles, setGalleryFiles] = useState([]); // New files to upload
+  const [galleryPreviews, setGalleryPreviews] = useState([]); // Previews for new files
+  const [serverGalleryImages, setServerGalleryImages] = useState([]); // Existing images {id, url}
+  const galleryInputRef = useRef(null);
+
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -161,7 +168,7 @@ export default function CreateOrEditEvent() {
     (async () => {
       try {
         Swal.fire({ title: "Loading event…", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const { data } = await axios.get(`https://minaramasjid-backend.onrender.com/api/events/${id}`);
+        const { data } = await axios.get(`${API_BASE_URL}/api/events/${id}`);
 
         // basic
         setEventTitle(data.title || "");
@@ -193,7 +200,13 @@ export default function CreateOrEditEvent() {
         setHindiDescription(data.hindiDescription || "");
 
         // server image preview
-        setServerImageURL(`https://minaramasjid-backend.onrender.com/api/events/image/${id}`);
+        setServerImageURL(`${API_BASE_URL}/api/events/image/${id}`);
+
+        // fetch gallery images
+        axios.get(`${API_BASE_URL}/api/events/${id}/image`)
+          .then(res => setServerGalleryImages(res.data || []))
+          .catch(err => console.error("Error loading gallery:", err));
+
       } catch (err) {
         console.error(err);
         Swal.fire("Error", "Failed to load event data.", "error");
@@ -232,7 +245,60 @@ export default function CreateOrEditEvent() {
     if (fileInputRef.current) fileInputRef.current.value = "";
     // if editing and they clear the NEW image, show server image again (if any)
     if (isEdit) {
-      setServerImageURL(`https://minaramasjid-backend.onrender.com/api/events/image/${id}`);
+      setServerImageURL(`${API_BASE_URL}/api/events/image/${id}`);
+    }
+  };
+
+  /* ---------- Gallery Handlers ---------- */
+  const handleGalleryUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    // Filter validation
+    const validFiles = files.filter(f => f.size <= 5 * 1024 * 1024);
+    if (validFiles.length < files.length) {
+      Swal.fire({
+        icon: "warning",
+        title: "Some files skipped",
+        text: "Images must be under 5MB each.",
+      });
+    }
+
+    setGalleryFiles(prev => [...prev, ...validFiles]);
+
+    // Generate previews
+    const newPreviews = validFiles.map(f => URL.createObjectURL(f));
+    setGalleryPreviews(prev => [...prev, ...newPreviews]);
+  };
+
+  const removeNewGalleryImage = (index) => {
+    setGalleryFiles(prev => prev.filter((_, i) => i !== index));
+    setGalleryPreviews(prev => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const deleteServerGalleryImage = async (imageId) => {
+    const result = await Swal.fire({
+      title: "Delete image?",
+      text: "This cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!"
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await axios.delete(`${API_BASE_URL}/api/events/image-item/${imageId}`);
+
+      setServerGalleryImages(prev => prev.filter(img => img.id !== imageId));
+      Swal.fire("Deleted!", "Image has been removed.", "success");
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error", "Failed to delete image.", "error");
     }
   };
 
@@ -270,6 +336,12 @@ export default function CreateOrEditEvent() {
       if (uploadedImageFile) {
         formData.append("image", uploadedImageFile);
       }
+
+      // Append new gallery images
+      galleryFiles.forEach((file) => {
+        formData.append("gallery", file);
+      });
+
       // Core event fields
       formData.append("title", eventTitle);
       formData.append("slug", eventTitle); // adjust if backend slugifies
@@ -303,8 +375,8 @@ export default function CreateOrEditEvent() {
       }
 
       const url = isEdit
-        ? `https://minaramasjid-backend.onrender.com/api/events/${id}`
-        : `https://minaramasjid-backend.onrender.com/api/events`;
+        ? `${API_BASE_URL}/api/events/${id}`
+        : `${API_BASE_URL}/api/events`;
 
       const method = isEdit ? "patch" : "post";
 
@@ -327,8 +399,8 @@ export default function CreateOrEditEvent() {
             ? "Event updated & published!"
             : "Event updated!"
           : publishFlag
-          ? "Published!"
-          : "Draft Saved!",
+            ? "Published!"
+            : "Draft Saved!",
         timer: 1600,
         showConfirmButton: false,
       }).then(() => navigate("/event"));
@@ -497,6 +569,69 @@ export default function CreateOrEditEvent() {
                     style={{ display: "none" }}
                     accept="image/*"
                     onChange={handleImageUpload}
+                  />
+                </div>
+              </section>
+
+              {/* Gallery Images */}
+              <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <label className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4" />
+                  Gallery Images <span className="text-gray-500">(Optional)</span>
+                </label>
+
+                <div className="mt-2 text-center">
+                  <div className="flex flex-wrap gap-4 mb-4">
+                    {/* Existing Server Images */}
+                    {serverGalleryImages.map((img) => (
+                      <div key={img.id} className="relative w-24 h-24 border rounded-lg overflow-hidden shrink-0 shadow-sm group">
+                        <img
+                          src={`${API_BASE_URL}${img.url}`}
+                          alt="Gallery"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          className="absolute top-1 right-1 bg-red-500/90 text-white rounded-full p-1 shadow hover:bg-red-600 transition opacity-0 group-hover:opacity-100"
+                          onClick={() => deleteServerGalleryImage(img.id)}
+                          title="Delete this image"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* New Previews */}
+                    {galleryPreviews.map((src, idx) => (
+                      <div key={`new-${idx}`} className="relative w-24 h-24 border-2 border-blue-100 rounded-lg overflow-hidden shrink-0 shadow-sm">
+                        <img src={src} alt="New Gallery" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          className="absolute top-1 right-1 bg-white/90 rounded-full p-1 shadow hover:bg-white transition"
+                          onClick={() => removeNewGalleryImage(idx)}
+                        >
+                          <X className="w-3 h-3 text-gray-700" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    {isEdit ? "Add More Images" : "Add Images"}
+                  </button>
+
+                  <input
+                    type="file"
+                    multiple
+                    ref={galleryInputRef}
+                    style={{ display: "none" }}
+                    accept="image/*"
+                    onChange={handleGalleryUpload}
                   />
                 </div>
               </section>

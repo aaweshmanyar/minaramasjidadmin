@@ -295,7 +295,7 @@ export default function CreateArticlePage() {
       if (selectedTag) formData.append("tags", selectedTag);
 
       await axios.post(
-        `https://minaramasjid-backend.onrender.com/api/articles`,
+        `${API_BASE_URL}/api/articles`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },

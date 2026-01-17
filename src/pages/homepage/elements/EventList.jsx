@@ -15,8 +15,7 @@ import {
   Filter,
   ArrowUpDown,
 } from "lucide-react";
-
-const API_BASE_URL = "https://minaramasjid-backend.onrender.com/api";
+import API_BASE_URL from "../../../../config";
 
 export default function EventList() {
   const navigate = useNavigate();
@@ -39,6 +38,7 @@ export default function EventList() {
   const [topicFilter, setTopicFilter] = useState("all");
 
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [galleryImages, setGalleryImages] = useState([]);
 
   const abortRef = useRef(null);
 
@@ -52,7 +52,7 @@ export default function EventList() {
       if (showSpinner) setLoading(true);
       setError("");
 
-      const res = await fetch(`${API_BASE_URL}/events`, { signal: ctrl.signal });
+      const res = await fetch(`${API_BASE_URL}/api/events`, { signal: ctrl.signal });
       const data = await res.json();
 
       if (Array.isArray(data)) setEvents(data);
@@ -164,6 +164,14 @@ export default function EventList() {
   // ---------- Actions ----------
   const handleView = (event) => {
     setSelectedEvent(event);
+    setGalleryImages([]); // clear previous
+    // Fetch gallery
+    fetch(`${API_BASE_URL}/api/events/${event.id}/image`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setGalleryImages(data);
+      })
+      .catch((err) => console.error("Error loading gallery:", err));
   };
 
   const handleDelete = async (id) => {
@@ -185,7 +193,7 @@ export default function EventList() {
         didOpen: () => Swal.showLoading(),
       });
 
-      const res = await fetch(`${API_BASE_URL}/events/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE_URL}/api/events/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete event");
 
       Swal.close();
@@ -195,6 +203,36 @@ export default function EventList() {
     } catch (err) {
       Swal.fire("Error", "Failed to delete event.", "error");
       console.error(err);
+    }
+  };
+
+
+
+  const handleDeleteGalleryImage = async (imageId) => {
+    const result = await Swal.fire({
+      title: "Delete image?",
+      text: "This cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/events/image-item/${imageId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setGalleryImages((prev) => prev.filter((img) => img.id !== imageId));
+        Swal.fire("Deleted!", "Image has been removed.", "success");
+      } else {
+        throw new Error("Failed to delete image");
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error", "Failed to delete image.", "error");
     }
   };
 
@@ -231,7 +269,7 @@ export default function EventList() {
     }
     return (
       <img
-        src={`${API_BASE_URL}/events/image/${id}`}
+        src={`${API_BASE_URL}/api/events/image/${id}`}
         alt={alt || "Event"}
         className="w-20 h-14 object-cover rounded border mx-auto"
         onError={() => setOk(false)}
@@ -573,9 +611,8 @@ export default function EventList() {
                     <button
                       key={n}
                       onClick={() => setCurrentPage(n)}
-                      className={`px-3 py-1.5 rounded border ${
-                        n === pageSafe ? "bg-[#5a6c17] text-white border-[#5a6c17]" : "bg-white hover:bg-gray-50"
-                      }`}
+                      className={`px-3 py-1.5 rounded border ${n === pageSafe ? "bg-[#5a6c17] text-white border-[#5a6c17]" : "bg-white hover:bg-gray-50"
+                        }`}
                     >
                       {n}
                     </button>
@@ -634,7 +671,7 @@ export default function EventList() {
               <div>
                 <h3 className="text-xl font-bold mb-4">{selectedEvent.title}</h3>
                 <img
-                  src={`${API_BASE_URL}/events/image/${selectedEvent.id}`}
+                  src={`${API_BASE_URL}/api/events/image/${selectedEvent.id}`}
                   alt={selectedEvent.title}
                   className="w-full max-h-64 object-contain mb-4 rounded border"
                   onError={(e) => {
@@ -653,6 +690,31 @@ export default function EventList() {
                   {selectedEvent.writers && <p>Writer: {selectedEvent.writers}</p>}
                   {selectedEvent.translator && <p>Translator: {selectedEvent.translator}</p>}
                 </div>
+
+                {/* Gallery Grid */}
+                {galleryImages.length > 0 && (
+                  <div className="mt-6 border-t pt-4">
+                    <h4 className="font-semibold mb-3">Gallery Images</h4>
+                    <div className="flex flex-wrap gap-4">
+                      {galleryImages.map((img) => (
+                        <div key={img.id} className="relative group w-24 h-24 border rounded overflow-hidden shadow-sm">
+                          <img
+                            src={`${API_BASE_URL}${img.url}`}
+                            alt="Gallery"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            onClick={() => handleDeleteGalleryImage(img.id)}
+                            className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 shadow opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+                            title="Delete Image"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-5 flex gap-2 justify-end">
                   <button

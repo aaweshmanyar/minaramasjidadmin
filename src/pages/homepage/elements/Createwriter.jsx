@@ -149,13 +149,13 @@ export default function CreateWriterForm() {
       payload.append("isTeamMember", isTeamMember ? "true" : "false");
       if (profilePic) payload.append("image", profilePic);
 
-      const res = await fetch(`https://minaramasjid-backend.onrender.com/api/writers`, { method: "POST", body: payload });
+      const res = await fetch(`${API_BASE_URL}/api/writers`, { method: "POST", body: payload });
       if (!res.ok) {
         let msg = "Failed to create writer";
         try {
           const data = await res.json();
           if (data?.message) msg = data.message;
-        } catch (_) {}
+        } catch (_) { }
         throw new Error(msg);
       }
 

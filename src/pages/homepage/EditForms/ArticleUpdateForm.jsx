@@ -170,7 +170,7 @@ export default function EditArticlePage() {
         setTags(tagsRes.data || []);
 
         // Fetch article
-        const artRes = await axios.get(`https://minaramasjid-backend.onrender.com/api/articles/${id}`);
+        const artRes = await axios.get(`${API_BASE_URL}/api/articles/${id}`);
         const a = artRes.data || {};
 
         // Core

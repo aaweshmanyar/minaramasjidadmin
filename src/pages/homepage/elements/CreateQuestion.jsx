@@ -286,7 +286,7 @@ export default function CreateQuestionsForm() {
       });
 
       const response = await axios.post(
-        `https://minaramasjid-backend.onrender.com/api/questions`,
+        `${API_BASE_URL}/api/questions`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
@@ -465,7 +465,7 @@ export default function CreateQuestionsForm() {
                   style={{ display: "none" }}
                   accept="image/*"
                   onChange={handleImageUpload}
-                  /* no required here – preset covers default */
+                /* no required here – preset covers default */
                 />
               </div>
             </section>
