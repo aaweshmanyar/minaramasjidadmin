@@ -368,6 +368,13 @@ export default function CreateBookPage() {
     if (!formData.title.trim()) newErrors.title = "Title is required";
     if (!formData.author.trim()) newErrors.author = "Author is required";
     if (!formData.language) newErrors.language = "Language is required";
+    if (!formData.status) newErrors.status = "Status is required";
+    if (!formData.category.trim()) newErrors.category = "Category is required";
+    if (!formData.isbn.trim()) newErrors.isbn = "ISBN is required";
+    if (!formData.bookDate) newErrors.bookDate = "Book date is required";
+
+
+
     // NOTE: coverImage no longer required here, because preset will be used if none uploaded.
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -397,25 +404,36 @@ export default function CreateBookPage() {
       setSelectedPresetIndex(null);
     }
 
-    // Simulated progress for PDFs
+    // Simulated progress for PDFs (Visual Only)
     if (field === "attachment") {
       let uploaded = 0;
       const totalSize = file.size;
       setUploadProgress(0);
       setShowSuccessMessage(false);
 
-      const interval = setInterval(() => {
-        uploaded += Math.random() * (totalSize / 80);
+      // Clear any existing interval if user re-selects
+      if (window.pdfUploadInterval) clearInterval(window.pdfUploadInterval);
+
+      window.pdfUploadInterval = setInterval(() => {
+        // Slower simulation to match large file reality
+        uploaded += Math.random() * (totalSize / 300);
         const progress = Math.min((uploaded / totalSize) * 100, 100);
         setUploadProgress(progress);
 
         if (progress === 100) {
-          clearInterval(interval);
+          clearInterval(window.pdfUploadInterval);
           setTimeout(() => setShowSuccessMessage(true), 300);
         }
-      }, 100);
+      }, 200);
     }
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (window.pdfUploadInterval) clearInterval(window.pdfUploadInterval);
+    };
+  }, []);
 
   const handleRemoveCoverImage = () => {
     setFormData((prev) => ({ ...prev, coverImage: null }));
@@ -475,7 +493,7 @@ export default function CreateBookPage() {
       // Optional attachment
       if (formData.attachment) payload.append("attachment", formData.attachment);
 
-      if (formData.attachment) payload.append("attachment", formData.attachment);
+      // if (formData.attachment) payload.append("attachment", formData.attachment);
 
       const response = await fetch(`${API_BASE_URL}/api/books`, {
         method: "POST",
