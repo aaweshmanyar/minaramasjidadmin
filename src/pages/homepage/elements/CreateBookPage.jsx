@@ -117,11 +117,10 @@ const formats = [
 const Button = ({ children, className = "", variant = "", ...props }) => (
   <button
     type="button"
-    className={`px-4 py-2 rounded-lg font-medium shadow-sm transition ${
-      variant === "outline"
-        ? "border bg-white hover:bg-gray-50"
-        : "bg-gray-900 text-white hover:bg-black"
-    } ${className}`}
+    className={`px-4 py-2 rounded-lg font-medium shadow-sm transition ${variant === "outline"
+      ? "border bg-white hover:bg-gray-50"
+      : "bg-gray-900 text-white hover:bg-black"
+      } ${className}`}
     {...props}
   >
     {children}
@@ -239,7 +238,7 @@ const FileUpload = ({
             onChange={handleFileChange}
             required={required}
           />
-        <div className="flex-1">
+          <div className="flex-1">
             <div className="text-sm font-medium">
               {type === "image" ? "Select cover image" : "Select PDF file"}
             </div>
@@ -467,7 +466,7 @@ export default function CreateBookPage() {
       // Optional attachment
       if (formData.attachment) payload.append("attachment", formData.attachment);
 
-      const response = await fetch(`https://minaramasjid-backend.onrender.com/api/books`, {
+      const response = await fetch(`https://minaramasjid.com/api/books`, {
         method: "POST",
         body: payload,
       });
